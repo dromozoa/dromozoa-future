@@ -16,7 +16,7 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local pack = require "dromozoa.commons.pack"
-local state = require "dromozoa.socks.state"
+local state = require "dromozoa.future.state"
 
 local class = {}
 

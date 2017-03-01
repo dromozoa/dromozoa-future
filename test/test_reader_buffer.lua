@@ -17,7 +17,7 @@
 
 local equal = require "dromozoa.commons.equal"
 local dumper = require "dromozoa.commons.dumper"
-local reader_buffer = require "dromozoa.socks.reader_buffer"
+local reader_buffer = require "dromozoa.future.reader_buffer"
 
 local rb = reader_buffer()
 rb:write("0123456789")

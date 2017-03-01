@@ -15,7 +15,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local reader = require "dromozoa.socks.reader"
+local reader = require "dromozoa.future.reader"
 
 local class = {}
 

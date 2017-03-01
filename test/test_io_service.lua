@@ -17,8 +17,8 @@
 
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
-local io_handler = require "dromozoa.socks.io_handler"
-local io_service = require "dromozoa.socks.io_service"
+local io_handler = require "dromozoa.future.io_handler"
+local io_service = require "dromozoa.future.io_service"
 
 local fd1, fd2 = unix.socketpair(unix.AF_UNIX, uint32.bor(unix.SOCK_STREAM, unix.SOCK_CLOEXEC))
 assert(fd1:ndelay_on())

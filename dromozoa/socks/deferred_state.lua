@@ -15,10 +15,10 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local create_thread = require "dromozoa.socks.create_thread"
-local promise = require "dromozoa.socks.promise"
-local resume_thread = require "dromozoa.socks.resume_thread"
-local state = require "dromozoa.socks.state"
+local create_thread = require "dromozoa.future.create_thread"
+local promise = require "dromozoa.future.promise"
+local resume_thread = require "dromozoa.future.resume_thread"
+local state = require "dromozoa.future.state"
 
 local class = {}
 

@@ -16,7 +16,7 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local pairs = require "dromozoa.commons.pairs"
-local state = require "dromozoa.socks.state"
+local state = require "dromozoa.future.state"
 
 local function each_state(self)
   return coroutine.wrap(function ()

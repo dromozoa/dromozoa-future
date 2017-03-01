@@ -15,8 +15,8 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local future = require "dromozoa.socks.future"
-local sharer_state = require "dromozoa.socks.sharer_state"
+local future = require "dromozoa.future.future"
+local sharer_state = require "dromozoa.future.sharer_state"
 
 local class = {}
 

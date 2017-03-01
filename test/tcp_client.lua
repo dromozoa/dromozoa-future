@@ -17,7 +17,7 @@
 
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
-local future_service = require "dromozoa.socks.future_service"
+local future_service = require "dromozoa.future.future_service"
 
 -- local host = "10.211.55.30"
 -- local host = "49.212.170.128"

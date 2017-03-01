@@ -17,7 +17,7 @@
 
 local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
-local state = require "dromozoa.socks.state"
+local state = require "dromozoa.future.state"
 
 local class = {}
 

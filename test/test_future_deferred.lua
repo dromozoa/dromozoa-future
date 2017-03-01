@@ -18,7 +18,7 @@
 local dumper = require "dromozoa.commons.dumper"
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
-local future_service = require "dromozoa.socks.future_service"
+local future_service = require "dromozoa.future.future_service"
 
 -- debug.sethook(function (event, line)
 --   local info = debug.getinfo(2)

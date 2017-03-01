@@ -16,7 +16,7 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local equal = require "dromozoa.commons.equal"
-local future_service = require "dromozoa.socks.future_service"
+local future_service = require "dromozoa.future.future_service"
 
 local function check(n, ...)
   assert(select("#", ...) == n)

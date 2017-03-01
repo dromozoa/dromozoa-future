@@ -18,7 +18,7 @@
 local ipairs = require "dromozoa.commons.ipairs"
 local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
-local state = require "dromozoa.socks.state"
+local state = require "dromozoa.future.state"
 
 local function count_down(self)
   self.count = self.count - 1

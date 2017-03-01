@@ -16,7 +16,7 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local unix = require "dromozoa.unix"
-local timer_service = require "dromozoa.socks.timer_service"
+local timer_service = require "dromozoa.future.timer_service"
 
 local service = timer_service()
 

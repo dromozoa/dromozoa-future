@@ -17,9 +17,9 @@
 
 local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
-local create_thread = require "dromozoa.socks.create_thread"
-local never_return = require "dromozoa.socks.never_return"
-local resume_thread = require "dromozoa.socks.resume_thread"
+local create_thread = require "dromozoa.future.create_thread"
+local never_return = require "dromozoa.future.never_return"
+local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 

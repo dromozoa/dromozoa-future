@@ -15,8 +15,8 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local future = require "dromozoa.socks.future"
-local ready_state = require "dromozoa.socks.ready_state"
+local future = require "dromozoa.future.future"
+local ready_state = require "dromozoa.future.ready_state"
 
 return function (...)
   return future(ready_state(...))
