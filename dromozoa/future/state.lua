@@ -197,12 +197,12 @@ function class:then_(thread)
   end)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service)
-    return setmetatable(class.new(service), metatable)
+    return setmetatable(class.new(service), class.metatable)
   end;
 })
