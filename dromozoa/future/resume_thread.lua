@@ -17,10 +17,11 @@
 
 local never_return = require "dromozoa.future.never_return"
 
-local function check(result, message, ...)
+local function check(result, ...)
   if result then
-    return result, message, ...
+    return ...
   else
+    local message = ...
     if message ~= never_return then
       error(message)
     end
