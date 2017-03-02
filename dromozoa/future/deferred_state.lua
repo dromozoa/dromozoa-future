@@ -20,6 +20,7 @@ local promise = require "dromozoa.future.promise"
 local resume_thread = require "dromozoa.future.resume_thread"
 local state = require "dromozoa.future.state"
 
+local super = state
 local class = {}
 
 function class.new(service, thread)
@@ -43,7 +44,7 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, thread)
     return setmetatable(class.new(service, thread), class.metatable)
   end;
