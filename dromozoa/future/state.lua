@@ -164,10 +164,7 @@ function class:dispatch(timeout)
             resume_thread(caller, "timeout")
           end
         end)
-        local timeout = self.timeout
-        if timeout ~= nil then
-          self.timer_handle = service:add_timer(timeout, self.timer)
-        end
+        self.timer_handle = service:add_timer(timeout, self.timer)
       end
       if parent_state then
         parent_state.waiting_state = self
