@@ -21,9 +21,11 @@ local unpack = require "dromozoa.commons.unpack"
 local state = require "dromozoa.future.state"
 
 local function count_down(self)
-  self.count = self.count - 1
-  if self.count == 0 then
-    self:set(unpack(self.futures, 1, self.futures.n))
+  local count = self.count - 1
+  self.count = count
+  if count == 0 then
+    local futures = self.futures
+    self:set(unpack(futures, 1, futures.n))
     return true
   else
     return false
@@ -43,9 +45,10 @@ local class = {}
 
 function class.new(service, count, ...)
   local self = state.new(service)
-  self.futures = pack(...)
+  local futures = pack(...)
+  self.futures = futures
   if count == "n" then
-    self.count = self.futures.n
+    self.count = futures.n
   else
     self.count = count
   end
@@ -62,9 +65,10 @@ end
 
 function class:launch()
   state.launch(self)
-  local current_state = self.service:get_current_state()
+  local service = self.service
+  local current_state = service:get_current_state()
   for that in each_state(self) do
-    self.service:set_current_state(nil)
+    service:set_current_state(nil)
     if that:dispatch() then
       if count_down(self) then
         break
@@ -73,7 +77,7 @@ function class:launch()
       that.caller = self.counter
     end
   end
-  self.service:set_current_state(current_state)
+  service:set_current_state(current_state)
 end
 
 function class:suspend()
