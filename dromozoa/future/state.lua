@@ -146,7 +146,7 @@ function class:dispatch(timeout)
       service:set_current_state(parent_state)
       return true
     else
-      if timeout then
+      if timeout ~= nil then
         self.timeout = timeout
         self.timer = coroutine.create(function ()
           self:suspend()
