@@ -26,8 +26,7 @@ function class.new(service, thread)
   local self = state.new(service)
   local thread = create_thread(thread)
   self.deferred = coroutine.create(function ()
-    local promise = promise(self)
-    resume_thread(thread, promise)
+    resume_thread(thread, promise(self))
   end)
   return self
 end
@@ -39,13 +38,13 @@ function class:launch()
   resume_thread(deferred)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __index = state;
   __call = function (_, service, thread)
-    return setmetatable(class.new(service, thread), metatable)
+    return setmetatable(class.new(service, thread), class.metatable)
   end;
 })
