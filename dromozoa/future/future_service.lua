@@ -23,6 +23,7 @@ local io_service = require "dromozoa.future.io_service"
 local resume_thread = require "dromozoa.future.resume_thread"
 local timer_service = require "dromozoa.future.timer_service"
 
+local super = futures
 local class = {}
 
 function class.new()
@@ -100,7 +101,7 @@ function class:stop()
 end
 
 function class:dispatch(thread)
-  if thread then
+  if thread ~= nil then
     resume_thread(create_thread(thread), self)
     if self.stopped then
       return self
@@ -126,13 +127,13 @@ function class:get_current_state()
   return self.current_state
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = futures;
+  __index = super;
   __call = function ()
-    return setmetatable(class.new(), metatable)
+    return setmetatable(class.new(), class.metatable)
   end;
 })
