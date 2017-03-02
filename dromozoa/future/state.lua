@@ -21,26 +21,12 @@ local create_thread = require "dromozoa.future.create_thread"
 local never_return = require "dromozoa.future.never_return"
 local resume_thread = require "dromozoa.future.resume_thread"
 
-local function remove_timer(self)
-  local timer_handle = self.timer_handle
-  if timer_handle ~= nil then
-    self.service:remove_timer(timer_handle)
-    self.timer_handle = nil
-  end
-end
-
 local class = {}
 
 function class.new(service)
   return {
     service = service;
     status = "initial";
-    -- parent_state  : state
-    -- waiting_state : state
-    -- caller        : thread
-    -- timeout       : timespec
-    -- timer         : thread
-    -- timer_handle  : multimap_handle
   }
 end
 
@@ -75,8 +61,8 @@ function class:suspend()
   self.status = "suspended"
   local timer_handle = self.timer_handle
   if timer_handle ~= nil then
-    self.service:remove_timer(timer_handle)
     self.timer_handle = nil
+    self.service:remove_timer(timer_handle)
   end
 end
 
@@ -99,8 +85,8 @@ function class:finish()
   self.status = "ready"
   local timer_handle = self.timer_handle
   if timer_handle ~= nil then
-    self.service:remove_timer(timer_handle)
     self.timer_handle = nil
+    self.service:remove_timer(timer_handle)
   end
 end
 
@@ -148,15 +134,16 @@ function class:dispatch(timeout)
   if self:is_ready() then
     return true
   else
-    local parent_state = self.service:get_current_state()
-    self.service:set_current_state(self)
+    local service = self.service
+    local parent_state = service:get_current_state()
+    service:set_current_state(self)
     if self:is_suspended() then
       self:resume()
     else
       self:launch()
     end
     if self:is_ready() then
-      self.service:set_current_state(parent_state)
+      service:set_current_state(parent_state)
       return true
     else
       if timeout then
@@ -172,12 +159,14 @@ function class:dispatch(timeout)
             self.parent_state = nil
           end
           local caller = self.caller
-          self.caller = nil
-          resume_thread(caller, "timeout")
+          if caller ~= nil then
+            self.caller = nil
+            resume_thread(caller, "timeout")
+          end
         end)
         local timeout = self.timeout
         if timeout ~= nil then
-          self.timer_handle = self.service:add_timer(timeout, self.timer)
+          self.timer_handle = service:add_timer(timeout, self.timer)
         end
       end
       if parent_state then
