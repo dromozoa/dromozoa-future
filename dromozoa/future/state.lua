@@ -59,6 +59,7 @@ function class:suspend()
   end
   assert(self:is_running())
   self.status = "suspended"
+  -- remove timer
   local timer_handle = self.timer_handle
   if timer_handle ~= nil then
     self.timer_handle = nil
@@ -73,6 +74,7 @@ function class:resume()
   end
   assert(self:is_suspended())
   self.status = "running"
+  -- add timer
   local timeout = self.timeout
   if timeout ~= nil then
     self.timer_handle = self.service:add_timer(timeout, self.timer)
@@ -83,15 +85,20 @@ function class:finish()
   assert(self.waiting_state == nil)
   assert(self:is_running())
   self.status = "ready"
+  -- remove timer
   local timer_handle = self.timer_handle
   if timer_handle ~= nil then
     self.timer_handle = nil
     self.service:remove_timer(timer_handle)
   end
+  -- destruct timer
+  self.timeout = nil
+  self.timer = nil
 end
 
 function class:set_ready()
   self:finish()
+  -- ready
   local parent_state = self.parent_state
   self.service:set_current_state(parent_state)
   if parent_state ~= nil then
@@ -150,8 +157,10 @@ function class:dispatch(timeout)
         self.timeout = timeout
         self.timer = coroutine.create(function ()
           self:suspend()
+          -- destruct timer
           self.timeout = nil
           self.timer = nil
+          -- timeout
           local parent_state = self.parent_state
           self.service:set_current_state(parent_state)
           if parent_state ~= then
