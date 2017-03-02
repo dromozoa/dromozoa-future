@@ -38,6 +38,7 @@ local function each_state(self)
   end)
 end
 
+local super = state
 local class = {}
 
 function class.new(service, count, ...)
@@ -105,13 +106,13 @@ function class:finish()
   end
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, count, ...)
-    return setmetatable(class.new(service, count, ...), metatable)
+    return setmetatable(class.new(service, count, ...), class.metatable)
   end;
 })
