@@ -21,13 +21,6 @@ local create_thread = require "dromozoa.future.create_thread"
 local never_return = require "dromozoa.future.never_return"
 local resume_thread = require "dromozoa.future.resume_thread"
 
-local function add_timer(self)
-  local timeout = self.timeout
-  if timeout ~= nil then
-    self.timer_handle = self.service:add_timer(timeout, self.timer)
-  end
-end
-
 local function remove_timer(self)
   local timer_handle = self.timer_handle
   if timer_handle ~= nil then
@@ -80,7 +73,11 @@ function class:suspend()
   end
   assert(self:is_running())
   self.status = "suspended"
-  remove_timer(self)
+  local timer_handle = self.timer_handle
+  if timer_handle ~= nil then
+    self.service:remove_timer(timer_handle)
+    self.timer_handle = nil
+  end
 end
 
 function class:resume()
@@ -90,14 +87,21 @@ function class:resume()
   end
   assert(self:is_suspended())
   self.status = "running"
-  add_timer(self)
+  local timeout = self.timeout
+  if timeout ~= nil then
+    self.timer_handle = self.service:add_timer(timeout, self.timer)
+  end
 end
 
 function class:finish()
   assert(self.waiting_state == nil)
   assert(self:is_running())
   self.status = "ready"
-  remove_timer(self)
+  local timer_handle = self.timer_handle
+  if timer_handle ~= nil then
+    self.service:remove_timer(timer_handle)
+    self.timer_handle = nil
+  end
 end
 
 function class:set_ready()
@@ -171,7 +175,10 @@ function class:dispatch(timeout)
           self.caller = nil
           resume_thread(caller, "timeout")
         end)
-        add_timer(self)
+        local timeout = self.timeout
+        if timeout ~= nil then
+          self.timer_handle = self.service:add_timer(timeout, self.timer)
+        end
       end
       if parent_state then
         parent_state.waiting_state = self
