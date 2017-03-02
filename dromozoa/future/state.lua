@@ -95,8 +95,8 @@ function class:set_ready()
   local parent_state = self.parent_state
   self.service:set_current_state(parent_state)
   if parent_state ~= nil then
-    parent_state.waiting_state = nil
     self.parent_state = nil
+    parent_state.waiting_state = nil
   end
   local caller = self.caller
   if caller ~= nil then
@@ -155,8 +155,8 @@ function class:dispatch(timeout)
           local parent_state = self.parent_state
           self.service:set_current_state(parent_state)
           if parent_state ~= then
-            parent_state.waiting_state = nil
             self.parent_state = nil
+            parent_state.waiting_state = nil
           end
           local caller = self.caller
           if caller ~= nil then
@@ -166,10 +166,10 @@ function class:dispatch(timeout)
         end)
         self.timer_handle = service:add_timer(timeout, self.timer)
       end
-      if parent_state then
+      if parent_state ~= nil then
+        self.parent_state = parent_state
         parent_state.waiting_state = self
       end
-      self.parent_state = parent_state
       return false
     end
   end
