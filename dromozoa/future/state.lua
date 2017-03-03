@@ -91,20 +91,21 @@ function class:finish()
     self.timer_handle = nil
     self.service:remove_timer(timer_handle)
   end
-  -- destruct timer
-  self.timeout = nil
-  self.timer = nil
 end
 
 function class:set_ready()
   self:finish()
-  -- ready
+  -- destruct timer
+  self.timeout = nil
+  self.timer = nil
+  -- pop state
   local parent_state = self.parent_state
   self.service:set_current_state(parent_state)
   if parent_state ~= nil then
     self.parent_state = nil
     parent_state.waiting_state = nil
   end
+  -- ready
   local caller = self.caller
   if caller ~= nil then
     self.caller = nil
@@ -160,13 +161,14 @@ function class:dispatch(timeout)
           -- destruct timer
           self.timeout = nil
           self.timer = nil
-          -- timeout
+          -- pop state
           local parent_state = self.parent_state
           self.service:set_current_state(parent_state)
           if parent_state ~= then
             self.parent_state = nil
             parent_state.waiting_state = nil
           end
+          -- timeout
           local caller = self.caller
           if caller ~= nil then
             self.caller = nil
