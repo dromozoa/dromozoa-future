@@ -87,6 +87,7 @@ function class:suspend()
     if that:is_running() then
       that:suspend()
     end
+    -- [TODO] reset caller?
   end
 end
 
@@ -97,6 +98,7 @@ function class:resume()
     if that:is_suspended() then
       that:resume()
     end
+    -- [TODO] reset caller?
   end
 end
 
