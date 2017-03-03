@@ -21,6 +21,36 @@ local create_thread = require "dromozoa.future.create_thread"
 local never_return = require "dromozoa.future.never_return"
 local resume_thread = require "dromozoa.future.resume_thread"
 
+local function remove_timer(self)
+  local timer_handle = self.timer_handle
+  if timer_handle ~= nil then
+    self.timer_handle = nil
+    self.service:remove_timer(timer_handle)
+  end
+end
+
+local function destruct_timer(self)
+  self.timeout = nil
+  self.timer = nil
+end
+
+local function pop_state(self)
+  local parent_state = self.parent_state
+  self.service:set_current_state(parent_state)
+  if parent_state ~= nil then
+    self.parent_state = nil
+    parent_state.waiting_state = nil
+  end
+end
+
+local function resume_caller(self, status)
+  local caller = self.caller
+  if caller ~= nil then
+    self.caller = nil
+    resume_thread(caller, status)
+  end
+end
+
 local class = {}
 
 function class.new(service)
@@ -59,12 +89,7 @@ function class:suspend()
   end
   assert(self:is_running())
   self.status = "suspended"
-  -- remove timer
-  local timer_handle = self.timer_handle
-  if timer_handle ~= nil then
-    self.timer_handle = nil
-    self.service:remove_timer(timer_handle)
-  end
+  remove_timer(self)
 end
 
 function class:resume()
@@ -74,7 +99,6 @@ function class:resume()
   end
   assert(self:is_suspended())
   self.status = "running"
-  -- add timer
   local timeout = self.timeout
   if timeout ~= nil then
     self.timer_handle = self.service:add_timer(timeout, self.timer)
@@ -85,32 +109,14 @@ function class:finish()
   assert(self.waiting_state == nil)
   assert(self:is_running())
   self.status = "ready"
-  -- remove timer
-  local timer_handle = self.timer_handle
-  if timer_handle ~= nil then
-    self.timer_handle = nil
-    self.service:remove_timer(timer_handle)
-  end
+  remove_timer(self)
 end
 
 function class:set_ready()
   self:finish()
-  -- destruct timer
-  self.timeout = nil
-  self.timer = nil
-  -- pop state
-  local parent_state = self.parent_state
-  self.service:set_current_state(parent_state)
-  if parent_state ~= nil then
-    self.parent_state = nil
-    parent_state.waiting_state = nil
-  end
-  -- ready
-  local caller = self.caller
-  if caller ~= nil then
-    self.caller = nil
-    resume_thread(caller, "ready")
-  end
+  destruct_timer(self)
+  pop_state(self)
+  resume_caller(self, "ready")
 end
 
 function class:set(...)
@@ -158,22 +164,9 @@ function class:dispatch(timeout)
         self.timeout = timeout
         self.timer = coroutine.create(function ()
           self:suspend()
-          -- destruct timer
-          self.timeout = nil
-          self.timer = nil
-          -- pop state
-          local parent_state = self.parent_state
-          self.service:set_current_state(parent_state)
-          if parent_state ~= then
-            self.parent_state = nil
-            parent_state.waiting_state = nil
-          end
-          -- timeout
-          local caller = self.caller
-          if caller ~= nil then
-            self.caller = nil
-            resume_thread(caller, "timeout")
-          end
+          destruct_timer(self)
+          pop_state(self)
+          resume_caller(self, "timeout")
         end)
         self.timer_handle = service:add_timer(timeout, self.timer)
       end
