@@ -20,23 +20,6 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local state = require "dromozoa.future.state"
 
-local function count_down(self, key)
-  local count = self.count
-  local counted = self.counted
-  if not counted[key] then
-    counted[key] = true
-    count = count - 1
-  end
-  self.count = count
-  if count == 0 then
-    local futures = self.futures
-    self:set(unpack(futures, 1, futures.n))
-    return true
-  else
-    return false
-  end
-end
-
 local function each_state(self)
   return coroutine.wrap(function ()
     for key, future in ipairs(self.futures) do
@@ -45,15 +28,46 @@ local function each_state(self)
   end)
 end
 
-local function create_caller(self, key)
-  return coroutine.create(function ()
-    while true do
+local function count_down(self, key)
+  local counted = self.counted
+  if counted[key] == nil then
+    counted[key] = true
+    local count = self.count - 1
+    self.count = count
+    if count == 0 then
+      self:set(unpack(self.futures))
+      return true
+    end
+  end
+  return false
+end
+
+local function dispatch(self)
+  local service = self.service
+  local current_state = service:get_current_state()
+  for key, that in each_state(self) do
+    service:set_current_state(nil)
+    if that:dispatch() then
       if count_down(self, key) then
         break
       end
-      coroutine.yield()
+    else
+      that.caller = coroutine.create(function ()
+        if not count_down(self, key) then
+          coroutine.yield()
+        end
+      end)
     end
-  end)
+  end
+  service:set_current_state(current_state)
+end
+
+local function suspend(self)
+  for key, that in each_state(self) do
+    if that:is_running() then
+      that:suspend()
+    end
+  end
 end
 
 local super = state
@@ -74,58 +88,22 @@ end
 
 function class:launch()
   state.launch(self)
-  local service = self.service
-  local current_state = service:get_current_state()
-  for key, that in each_state(self) do
-    assert(that:is_initial() or that:is_suspended() or that:is_ready())
-    service:set_current_state(nil)
-    if that:dispatch() then
-      if count_down(self, key) then
-        break
-      end
-    else
-      that.caller = create_caller(self, key)
-    end
-  end
-  service:set_current_state(current_state)
+  dispatch(self)
 end
 
 function class:suspend()
   state.suspend(self)
-  for key, that in each_state(self) do
-    assert(that:is_running() or that:is_ready())
-    if that:is_running() then
-      that:suspend()
-    end
-  end
+  suspend(self)
 end
 
 function class:resume()
   state.resume(self)
-  local service = self.service
-  local current_state = service:get_current_state()
-  for key, that in each_state(self) do
-    assert(that:is_initial() or that:is_suspended() or that:is_ready())
-    service:set_current_state(nil)
-    if that:dispatch() then
-      if count_down(self, key) then
-        break
-      end
-    else
-      that.caller = create_caller(self, key)
-    end
-  end
-  service:set_current_state(current_state)
+  dispatch(self)
 end
 
 function class:finish()
   state.finish(self)
-  for key, that in each_state(self) do
-    if that:is_running() then
-      that:suspend()
-    end
-    that.caller = nil
-  end
+  suspend(self)
 end
 
 class.metatable = {
