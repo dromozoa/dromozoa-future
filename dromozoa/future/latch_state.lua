@@ -36,6 +36,9 @@ local function count_down(self, key)
     self.count = count
     if count == 0 then
       self:set(unpack(self.futures))
+      self.futures = nil
+      self.count = nil
+      self.counted = nil
       return true
     end
   end
