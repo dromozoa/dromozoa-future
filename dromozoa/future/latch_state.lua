@@ -20,8 +20,15 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local state = require "dromozoa.future.state"
 
-local function count_down(self)
-  local count = self.count - 1
+local function count_down(self, key)
+  local count = self.count
+  local counted = self.counted
+  -- print("counted", counted, key)
+  if not counted[key] then
+    counted[key] = true
+    count = count - 1
+  end
+  -- count = count - 1
   self.count = count
   if count == 0 then
     local futures = self.futures
@@ -34,8 +41,8 @@ end
 
 local function each_state(self)
   return coroutine.wrap(function ()
-    for _, future in ipairs(self.futures) do
-      coroutine.yield(future.state)
+    for key, future in ipairs(self.futures) do
+      coroutine.yield(key, future.state)
     end
   end)
 end
@@ -52,14 +59,7 @@ function class.new(service, count, ...)
   else
     self.count = count
   end
-  self.counter = coroutine.create(function ()
-    while true do
-      if count_down(self) then
-        break
-      end
-      coroutine.yield()
-    end
-  end)
+  self.counted = {}
   return self
 end
 
@@ -67,14 +67,22 @@ function class:launch()
   state.launch(self)
   local service = self.service
   local current_state = service:get_current_state()
-  for that in each_state(self) do
+  for key, that in each_state(self) do
+    assert(that:is_initial() or that:is_suspended() or that:is_ready())
     service:set_current_state(nil)
     if that:dispatch() then
-      if count_down(self) then
+      if count_down(self, key) then
         break
       end
     else
-      that.caller = self.counter
+      that.caller = coroutine.create(function ()
+        while true do
+          if count_down(self, key) then
+            break
+          end
+          coroutine.yield()
+        end
+      end)
     end
   end
   service:set_current_state(current_state)
@@ -82,29 +90,42 @@ end
 
 function class:suspend()
   state.suspend(self)
-  for that in each_state(self) do
+  for key, that in each_state(self) do
     assert(that:is_running() or that:is_ready())
     if that:is_running() then
       that:suspend()
     end
-    -- [TODO] reset caller?
   end
 end
 
 function class:resume()
   state.resume(self)
-  for that in each_state(self) do
-    assert(that:is_suspended() or that:is_ready())
-    if that:is_suspended() then
-      that:resume()
+  local service = self.service
+  local current_state = service:get_current_state()
+  for key, that in each_state(self) do
+    assert(that:is_initial() or that:is_suspended() or that:is_ready())
+    service:set_current_state(nil)
+    if that:dispatch() then
+      if count_down(self, key) then
+        break
+      end
+    else
+      that.caller = coroutine.create(function ()
+        while true do
+          if count_down(self, key) then
+            break
+          end
+          coroutine.yield()
+        end
+      end)
     end
-    -- [TODO] reset caller?
   end
+  service:set_current_state(current_state)
 end
 
 function class:finish()
   state.finish(self)
-  for that in each_state(self) do
+  for key, that in each_state(self) do
     if that:is_running() then
       that:suspend()
     end

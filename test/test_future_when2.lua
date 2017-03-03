@@ -26,9 +26,10 @@ assert(service:dispatch(coroutine.create(function (service)
   assert(fd1:ndelay_on())
   assert(fd2:ndelay_on())
 
+  local t = 0.1
+
   local f = service:read(fd1, 16)
   local w = service:when_all(f)
-  local t = 0.1
 
   print(s, f.state.status, f.state.caller, w.state.status, w.state.caller)
   local s = w:wait_for(t)
@@ -42,8 +43,29 @@ assert(service:dispatch(coroutine.create(function (service)
 
   print(s, f.state.status, f.state.caller, w.state.status, w.state.caller)
   local s = w:wait_for(t)
-  assert(s == "ready")
   print(s, f.state.status, f.state.caller, w.state.status, w.state.caller)
+  assert(s == "ready")
+  assert(w:get() == f)
+  assert(f:get() == "x")
+
+  -- undefined behavior
+  -- local f = service:read(fd1, 16)
+  -- local w = service:when_all(f, f, f, f)
+  -- assert(w:wait_for(t) == "timeout")
+
+  local f = service:read(fd1, 16)
+  local w1 = service:when_all(f)
+  local w2 = service:when_all(f)
+
+  assert(w1:wait_for(t) == "timeout")
+  assert(w2:wait_for(t) == "timeout")
+  assert(w1:wait_for(t) == "timeout")
+  assert(w2:wait_for(t) == "timeout")
+  fd2:write("y")
+  assert(w1:wait_for(t) == "ready")
+  local s = w2:wait_for(t)
+  print(s)
+  assert(s == "ready")
 
   assert(fd1:close())
   assert(fd2:close())
