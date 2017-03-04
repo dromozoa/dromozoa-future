@@ -66,7 +66,7 @@ local function dispatch(self)
 end
 
 local function suspend(self)
-  for key, that in each_state(self) do
+  for _, that in each_state(self) do
     if that:is_running() then
       that:suspend()
     end
