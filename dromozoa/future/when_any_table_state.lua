@@ -26,60 +26,81 @@ local function each_state(self)
   end)
 end
 
+local function count_down(self, key)
+  local counted = self.counted
+  if counted[key] == nil then
+    counted[key] = true
+    local count = self.count - 1
+    self.count = count
+    if count == 0 then
+      self:set(key)
+      self.futures = nil
+      self.count = nil
+      self.counted = nil
+      return true
+    end
+  end
+  return false
+end
+
+local function dispatch(self)
+  local service = self.service
+  local current_state = service:get_current_state()
+  for key, that in each_state(self) do
+    service:set_current_state(nil)
+    if that:dispatch() then
+      if count_down(self, key) then
+        break
+      end
+    else
+      that.caller = coroutine.create(function ()
+        if not count_down(self, key) then
+          coroutine.yield()
+        end
+      end)
+    end
+  end
+  service:set_current_state(current_state)
+end
+
+local function suspend(self)
+  for _, that in each_state(self) do
+    if that:is_running() then
+      that:suspend()
+      that.caller = nil
+    end
+  end
+end
+
 local super = state
 local class = {}
 
 function class.new(service, futures)
   local self = state.new(service)
   self.futures = futures
+  self.count = 1
+  self.counted = {}
   return self
 end
 
 function class:launch()
   state.launch(self)
-  local current_state = self.service:get_current_state()
-  for key, that in each_state(self) do
-    self.service:set_current_state(nil)
-    if that:dispatch() then
-      self:set(key)
-      break
-    else
-      that.caller = coroutine.create(function ()
-        self:set(key)
-      end)
-    end
-  end
-  self.service:set_current_state(current_state)
+  dispatch(self)
 end
 
 function class:suspend()
   state.suspend(self)
-  for _, that in each_state(self) do
-    assert(that:is_running() or that:is_ready())
-    if that:is_running() then
-      that:suspend()
-    end
-  end
+  suspend(self)
 end
 
 function class:resume()
   state.resume(self)
-  for _, that in each_state(self) do
-    assert(that:is_suspended() or that:is_ready())
-    if that:is_suspended() then
-      that:resume()
-    end
-  end
+  dispatch(self)
 end
 
 function class:finish()
   state.finish(self)
-  for _, that in each_state(self) do
-    if that:is_running() then
-      that:suspend()
-    end
-    that.caller = nil
-  end
+  suspend(self)
 end
 
 class.metatable = {

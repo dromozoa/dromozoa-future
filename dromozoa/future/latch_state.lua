@@ -69,6 +69,7 @@ local function suspend(self)
   for _, that in each_state(self) do
     if that:is_running() then
       that:suspend()
+      that.caller = nil
     end
   end
 end
