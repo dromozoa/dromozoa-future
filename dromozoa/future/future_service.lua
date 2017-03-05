@@ -19,7 +19,7 @@ local unix = require "dromozoa.unix"
 local create_thread = require "dromozoa.future.create_thread"
 local futures = require "dromozoa.future.futures"
 local io_handler = require "dromozoa.future.io_handler"
-local io_service = require "dromozoa.future.io_service"
+local io_selector_service = require "dromozoa.future.io_selector_service"
 local resume_thread = require "dromozoa.future.resume_thread"
 local timer_service = require "dromozoa.future.timer_service"
 
@@ -29,7 +29,7 @@ local class = {}
 function class.new()
   local self = {
     timer_service = timer_service();
-    io_service = io_service();
+    io_service = io_selector_service();
     async_service = unix.async_service();
     async_threads = {};
   }
