@@ -21,37 +21,24 @@ local state = require "dromozoa.future.state"
 local function each_state(self)
   return coroutine.wrap(function ()
     for key, future in pairs(self.futures) do
-      coroutine.yield(key, future.state)
+      coroutine.yield(key, future.state, future)
     end
   end)
-end
-
-local function count_down(self, key)
-  local counted = self.counted
-  if counted[key] == nil then
-    counted[key] = true
-    self:set(key)
-    self.futures = nil
-    self.counted = nil
-    return true
-  end
-  return false
 end
 
 local function dispatch(self)
   local service = self.service
   local current_state = service:get_current_state()
-  for key, that in each_state(self) do
+  for key, that, future in each_state(self) do
     service:set_current_state(nil)
     if that:dispatch() then
-      if count_down(self, key) then
-        break
-      end
+      self:set(key, future)
+      self.futures = nil
+      break
     else
       that.caller = coroutine.create(function ()
-        if not count_down(self, key) then
-          coroutine.yield()
-        end
+        self:set(key, future)
+        self.futures = nil
       end)
     end
   end
@@ -73,7 +60,6 @@ local class = {}
 function class.new(service, futures)
   local self = super.new(service)
   self.futures = futures
-  self.counted = {}
   return self
 end
 

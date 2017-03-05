@@ -94,8 +94,8 @@ assert(service:dispatch(function (service)
 
   local f = service:when_any_table(futures)
   print("when_any_table", f.state)
-  local key = f:get()
-  print(key)
+  local key, f = f:get()
+  print(key, f)
   -- addrinfo:push(unpack(futures[key]:get()))
   futures[key] = nil
 
