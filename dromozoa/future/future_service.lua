@@ -23,6 +23,7 @@ local io_service = require "dromozoa.future.io_service"
 local resume_thread = require "dromozoa.future.resume_thread"
 local timer_service = require "dromozoa.future.timer_service"
 
+local super = futures
 local class = {}
 
 function class.new()
@@ -33,11 +34,12 @@ function class.new()
     async_threads = {};
   }
   return class.add_handler(self, io_handler(self.async_service:get(), "read", function ()
+    local async_service = self.async_service
     while true do
-      local result = self.async_service:read()
+      local result = async_service:read()
       if result > 0 then
         while true do
-          local task = self.async_service:pop()
+          local task = async_service:pop()
           if task then
             local thread = self.async_threads[task]
             self.async_threads[task] = nil
@@ -100,18 +102,20 @@ function class:stop()
 end
 
 function class:dispatch(thread)
-  if thread then
+  if thread ~= nil then
     resume_thread(create_thread(thread), self)
     if self.stopped then
       return self
     end
   end
+  local timer_service = self.timer_service
+  local io_service = self.io_service
   while true do
-    self.timer_service:dispatch()
+    timer_service:dispatch()
     if self.stopped then
       return self
     end
-    self.io_service:dispatch()
+    io_service:dispatch()
     if self.stopped then
       return self
     end
@@ -126,13 +130,13 @@ function class:get_current_state()
   return self.current_state
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = futures;
+  __index = super;
   __call = function ()
-    return setmetatable(class.new(), metatable)
+    return setmetatable(class.new(), class.metatable)
   end;
 })

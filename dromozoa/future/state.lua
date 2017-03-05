@@ -21,6 +21,36 @@ local create_thread = require "dromozoa.future.create_thread"
 local never_return = require "dromozoa.future.never_return"
 local resume_thread = require "dromozoa.future.resume_thread"
 
+local function remove_timer(self)
+  local timer_handle = self.timer_handle
+  if timer_handle ~= nil then
+    self.timer_handle = nil
+    self.service:remove_timer(timer_handle)
+  end
+end
+
+local function destruct_timer(self)
+  self.timeout = nil
+  self.timer = nil
+end
+
+local function pop_state(self)
+  local parent_state = self.parent_state
+  self.service:set_current_state(parent_state)
+  if parent_state ~= nil then
+    self.parent_state = nil
+    parent_state.waiting_state = nil
+  end
+end
+
+local function resume_caller(self, status)
+  local caller = self.caller
+  if caller ~= nil then
+    self.caller = nil
+    resume_thread(caller, status)
+  end
+end
+
 local class = {}
 
 function class.new(service)
@@ -47,58 +77,46 @@ function class:is_ready()
 end
 
 function class:launch()
-  assert(not self.waiting_state)
+  assert(self.waiting_state == nil)
   assert(self:is_initial())
   self.status = "running"
 end
 
 function class:suspend()
   local waiting_state = self.waiting_state
-  if waiting_state then
+  if waiting_state ~= nil then
     waiting_state:suspend()
   end
   assert(self:is_running())
   self.status = "suspended"
-  if self.timer_handle then
-    self.service:remove_timer(self.timer_handle)
-    self.timer_handle = nil
-  end
+  remove_timer(self)
 end
 
 function class:resume()
   local waiting_state = self.waiting_state
-  if waiting_state then
+  if waiting_state ~= nil then
     waiting_state:resume()
   end
   assert(self:is_suspended())
   self.status = "running"
-  if self.timeout then
-    self.timer_handle = self.service:add_timer(self.timeout, self.timer)
+  local timeout = self.timeout
+  if timeout ~= nil then
+    self.timer_handle = self.service:add_timer(timeout, self.timer)
   end
 end
 
 function class:finish()
-  assert(not self.waiting_state)
+  assert(self.waiting_state == nil)
   assert(self:is_running())
   self.status = "ready"
-  if self.timer_handle then
-    self.service:remove_timer(self.timer_handle)
-    self.timer_handle = nil
-  end
+  remove_timer(self)
 end
 
 function class:set_ready()
   self:finish()
-  self.service:set_current_state(self.parent_state)
-  if self.parent_state then
-    self.parent_state.waiting_state = nil
-    self.parent_state = nil
-  end
-  local caller = self.caller
-  if caller then
-    self.caller = nil
-    resume_thread(caller, "ready")
-  end
+  destruct_timer(self)
+  pop_state(self)
+  resume_caller(self, "ready")
 end
 
 function class:set(...)
@@ -130,38 +148,32 @@ function class:dispatch(timeout)
   if self:is_ready() then
     return true
   else
-    local parent_state = self.service:get_current_state()
-    self.service:set_current_state(self)
+    local service = self.service
+    local parent_state = service:get_current_state()
+    service:set_current_state(self)
     if self:is_suspended() then
       self:resume()
     else
       self:launch()
     end
     if self:is_ready() then
-      self.service:set_current_state(parent_state)
+      service:set_current_state(parent_state)
       return true
     else
-      if timeout then
+      if timeout ~= nil then
         self.timeout = timeout
         self.timer = coroutine.create(function ()
           self:suspend()
-          self.timeout = nil
-          self.timer = nil
-          self.service:set_current_state(self.parent_state)
-          if self.parent_state then
-            self.parent_state.waiting_state = nil
-            self.parent_state = nil
-          end
-          local caller = self.caller
-          self.caller = nil
-          resume_thread(caller, "timeout")
+          destruct_timer(self)
+          pop_state(self)
+          resume_caller(self, "timeout")
         end)
-        self.timer_handle = self.service:add_timer(self.timeout, self.timer)
+        self.timer_handle = service:add_timer(timeout, self.timer)
       end
-      if parent_state then
+      if parent_state ~= nil then
+        self.parent_state = parent_state
         parent_state.waiting_state = self
       end
-      self.parent_state = parent_state
       return false
     end
   end
@@ -197,12 +209,12 @@ function class:then_(thread)
   end)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service)
-    return setmetatable(class.new(service), metatable)
+    return setmetatable(class.new(service), class.metatable)
   end;
 })

@@ -20,98 +20,103 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local state = require "dromozoa.future.state"
 
-local function count_down(self)
-  self.count = self.count - 1
-  if self.count == 0 then
-    self:set(unpack(self.futures, 1, self.futures.n))
-    return true
-  else
-    return false
-  end
-end
-
 local function each_state(self)
   return coroutine.wrap(function ()
-    for _, future in ipairs(self.futures) do
-      coroutine.yield(future.state)
+    for key, future in ipairs(self.futures) do
+      coroutine.yield(key, future.state)
     end
   end)
 end
 
+local function count_down(self, key)
+  local counted = self.counted
+  if counted[key] == nil then
+    counted[key] = true
+    local count = self.count - 1
+    self.count = count
+    if count == 0 then
+      self:set(unpack(self.futures))
+      self.futures = nil
+      self.count = nil
+      self.counted = nil
+      return true
+    end
+  end
+  return false
+end
+
+local function dispatch(self)
+  local service = self.service
+  local current_state = service:get_current_state()
+  for key, that in each_state(self) do
+    service:set_current_state(nil)
+    if that:dispatch() then
+      if count_down(self, key) then
+        break
+      end
+    else
+      that.caller = coroutine.create(function ()
+        if not count_down(self, key) then
+          coroutine.yield()
+        end
+      end)
+    end
+  end
+  service:set_current_state(current_state)
+end
+
+local function suspend(self)
+  for _, that in each_state(self) do
+    if that:is_running() then
+      that:suspend()
+      that.caller = nil
+    end
+  end
+end
+
+local super = state
 local class = {}
 
 function class.new(service, count, ...)
-  local self = state.new(service)
-  self.futures = pack(...)
+  local self = super.new(service)
+  local futures = pack(...)
+  self.futures = futures
   if count == "n" then
-    self.count = self.futures.n
+    self.count = futures.n
   else
     self.count = count
   end
-  self.counter = coroutine.create(function ()
-    while true do
-      if count_down(self) then
-        break
-      end
-      coroutine.yield()
-    end
-  end)
+  self.counted = {}
   return self
 end
 
 function class:launch()
-  state.launch(self)
-  local current_state = self.service:get_current_state()
-  for that in each_state(self) do
-    self.service:set_current_state(nil)
-    if that:dispatch() then
-      if count_down(self) then
-        break
-      end
-    else
-      that.caller = self.counter
-    end
-  end
-  self.service:set_current_state(current_state)
+  super.launch(self)
+  dispatch(self)
 end
 
 function class:suspend()
-  state.suspend(self)
-  for that in each_state(self) do
-    assert(that:is_running() or that:is_ready())
-    if that:is_running() then
-      that:suspend()
-    end
-  end
+  super.suspend(self)
+  suspend(self)
 end
 
 function class:resume()
-  state.resume(self)
-  for that in each_state(self) do
-    assert(that:is_suspended() or that:is_ready())
-    if that:is_suspended() then
-      that:resume()
-    end
-  end
+  super.resume(self)
+  dispatch(self)
 end
 
 function class:finish()
-  state.finish(self)
-  for that in each_state(self) do
-    if that:is_running() then
-      that:suspend()
-    end
-    that.caller = nil
-  end
+  super.finish(self)
+  suspend(self)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, count, ...)
-    return setmetatable(class.new(service, count, ...), metatable)
+    return setmetatable(class.new(service, count, ...), class.metatable)
   end;
 })

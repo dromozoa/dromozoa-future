@@ -51,12 +51,12 @@ function class:then_(thread)
   return self.state:then_(thread)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, state)
-    return setmetatable(class.new(state), metatable)
+    return setmetatable(class.new(state), class.metatable)
   end;
 })

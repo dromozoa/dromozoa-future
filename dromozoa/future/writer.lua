@@ -28,9 +28,11 @@ end
 
 function class:write(buffer, i, j)
   return self.service:deferred(function (promise)
+    local service = self.service
+    local fd = self.fd
     local min, max = translate_range(#buffer, i, j)
     while min <= max do
-      local result, message, code = self.service:write(self.fd, buffer, min, max):get()
+      local result, message, code = service:write(fd, buffer, min, max):get()
       if not result then
         return promise:set(nil, message, code)
       else
@@ -41,12 +43,12 @@ function class:write(buffer, i, j)
   end)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, fd)
-    return setmetatable(class.new(service, fd), metatable)
+    return setmetatable(class.new(service, fd), class.metatable)
   end;
 })

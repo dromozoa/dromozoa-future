@@ -20,10 +20,10 @@ local unpack = require "dromozoa.commons.unpack"
 
 local function propagate(self)
   assert(self.state:is_ready())
-  for sharer_state in self.sharer_states:each() do
-    assert(sharer_state:is_running() or sharer_state:is_suspended() or sharer_state:is_ready())
-    if sharer_state:is_running() then
-      sharer_state:set(unpack(self.state.value, 1, self.state.value.n))
+  for share_state in self.share_states:each() do
+    assert(share_state:is_running() or share_state:is_suspended() or share_state:is_ready())
+    if share_state:is_running() then
+      share_state:set(unpack(self.state.value, 1, self.state.value.n))
     end
   end
 end
@@ -34,11 +34,8 @@ function class.new(service, state)
   local self = {
     service = service;
     state = state;
-    sharer_states = sequence();
+    share_states = sequence();
   }
-  self.propagator = coroutine.create(function ()
-    propagate(self)
-  end)
   return self
 end
 
@@ -46,54 +43,60 @@ function class:is_ready()
   return self.state:is_ready()
 end
 
-function class:launch(sharer_state)
-  self.sharer_states:push(sharer_state)
-  if self.state:is_ready() then
-    propagate(self)
-  elseif self.state:is_initial() or self.state:is_suspended() then
-    local current_state = self.service:get_current_state()
-    self.service:set_current_state(nil)
-    if self.state:dispatch() then
+function class:launch(share_state)
+  self.share_states:push(share_state)
+  local this = self.state
+  if this:is_initial() or this:is_suspended() then
+    local service = self.service
+    local current_state = service:get_current_state()
+    service:set_current_state(nil)
+    if this:dispatch() then
       propagate(self)
     else
-      self.state.caller = self.propagator
+      this.caller = coroutine.create(function ()
+        propagate(self)
+      end)
     end
-    self.service:set_current_state(current_state)
+    service:set_current_state(current_state)
+  elseif this:is_ready() then
+    propagate(self)
   end
 end
 
 function class:suspend()
-  assert(self.state:is_running() or self.state:is_ready())
-  if self.state:is_running() then
+  local this = self.state
+  assert(this:is_running() or this:is_ready())
+  if this:is_running() then
     local is_running = false
-    for sharer_state in self.sharer_states:each() do
-      assert(sharer_state:is_running() or sharer_state:is_suspended())
-      if sharer_state:is_running() then
+    for share_state in self.share_states:each() do
+      assert(share_state:is_running() or share_state:is_suspended())
+      if share_state:is_running() then
         is_running = true
         break
       end
     end
     if not is_running then
-      self.state:suspend()
+      this:suspend()
     end
   end
 end
 
 function class:resume()
-  assert(self.state:is_running() or self.state:is_suspended() or self.state:is_ready())
-  if self.state:is_ready() then
+  local this = self.state
+  assert(this:is_running() or this:is_suspended() or this:is_ready())
+  if this:is_suspended() then
+    this:resume()
+  elseif this:is_ready() then
     propagate(self)
-  elseif self.state:is_suspended() then
-    self.state:resume()
   end
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, state)
-    return setmetatable(class.new(service, state), metatable)
+    return setmetatable(class.new(service, state), class.metatable)
   end;
 })

@@ -15,38 +15,22 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local state = require "dromozoa.future.state"
+local unix = require "dromozoa.unix"
+local async_state = require "dromozoa.future.async_state"
+local future = require "dromozoa.future.future"
 
 local class = {}
 
-function class.new(service, shared_state)
-  local self = state.new(service)
-  self.shared_state = shared_state
-  return self
+function class.getaddrinfo(service, nodename, servname, hints)
+  return future(async_state(service, unix.async_getaddrinfo(nodename, servname, hints)))
 end
 
-function class:launch()
-  state.launch(self)
-  self.shared_state:launch(self)
+function class.getnameinfo(service, address, flags)
+  return future(async_state(service, address:async_getnameinfo(flags)))
 end
 
-function class:suspend()
-  state.suspend(self)
-  self.shared_state:suspend()
+function class.nanosleep(service, tv1)
+  return future(async_state(service, unix.async_nanosleep(tv1)))
 end
 
-function class:resume()
-  state.resume(self)
-  self.shared_state:resume()
-end
-
-local metatable = {
-  __index = class;
-}
-
-return setmetatable(class, {
-  __index = state;
-  __call = function (_, service, shared_state)
-    return setmetatable(class.new(service, shared_state), metatable)
-  end;
-})
+return class

@@ -16,7 +16,7 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local future = require "dromozoa.future.future"
-local sharer_state = require "dromozoa.future.sharer_state"
+local share_state = require "dromozoa.future.share_state"
 
 local class = {}
 
@@ -32,15 +32,15 @@ function class:is_ready()
 end
 
 function class:share()
-  return future(sharer_state(self.service, self.shared_state))
+  return future(share_state(self.service, self.shared_state))
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, shared_state)
-    return setmetatable(class.new(service, shared_state), metatable)
+    return setmetatable(class.new(service, shared_state), class.metatable)
   end;
 })

@@ -21,73 +21,75 @@ local state = require "dromozoa.future.state"
 local function each_state(self)
   return coroutine.wrap(function ()
     for key, future in pairs(self.futures) do
-      coroutine.yield(key, future.state)
+      coroutine.yield(key, future.state, future)
     end
   end)
 end
 
+local function dispatch(self)
+  local service = self.service
+  local current_state = service:get_current_state()
+  for key, that, future in each_state(self) do
+    service:set_current_state(nil)
+    if that:dispatch() then
+      self:set(key, future)
+      self.futures = nil
+      break
+    else
+      that.caller = coroutine.create(function ()
+        self:set(key, future)
+        self.futures = nil
+      end)
+    end
+  end
+  service:set_current_state(current_state)
+end
+
+local function suspend(self)
+  for _, that in each_state(self) do
+    if that:is_running() then
+      that:suspend()
+      that.caller = nil
+    end
+  end
+end
+
+local super = state
 local class = {}
 
 function class.new(service, futures)
-  local self = state.new(service)
+  local self = super.new(service)
   self.futures = futures
   return self
 end
 
 function class:launch()
-  state.launch(self)
-  local current_state = self.service:get_current_state()
-  for key, that in each_state(self) do
-    self.service:set_current_state(nil)
-    if that:dispatch() then
-      self:set(key)
-      break
-    else
-      that.caller = coroutine.create(function ()
-        self:set(key)
-      end)
-    end
-  end
-  self.service:set_current_state(current_state)
+  super.launch(self)
+  dispatch(self)
 end
 
 function class:suspend()
-  state.suspend(self)
-  for _, that in each_state(self) do
-    assert(that:is_running() or that:is_ready())
-    if that:is_running() then
-      that:suspend()
-    end
-  end
+  super.suspend(self)
+  suspend(self)
 end
 
 function class:resume()
-  state.resume(self)
-  for _, that in each_state(self) do
-    assert(that:is_suspended() or that:is_ready())
-    if that:is_suspended() then
-      that:resume()
-    end
-  end
+  super.resume(self)
+  dispatch(self)
 end
 
 function class:finish()
-  state.finish(self)
-  for _, that in each_state(self) do
-    if that:is_running() then
-      that:suspend()
-    end
-    that.caller = nil
-  end
+  super.finish(self)
+  suspend(self)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, futures)
-    return setmetatable(class.new(service, futures), metatable)
+    return setmetatable(class.new(service, futures), class.metatable)
   end;
 })

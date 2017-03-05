@@ -22,18 +22,14 @@ local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 
-function class.new(clock)
-  if clock == nil then
-    clock = unix.CLOCK_MONOTONIC_RAW
-  end
+function class.new()
   return class.update_current_time({
-    clock = clock;
     threads = multimap();
   })
 end
 
 function class:update_current_time()
-  self.current_time = unix.clock_gettime(self.clock)
+  self.current_time = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   return self
 end
 
@@ -66,12 +62,12 @@ function class:dispatch()
   return self
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __call = function (_, clock)
-    return setmetatable(class.new(clock), metatable)
+  __call = function ()
+    return setmetatable(class.new(), class.metatable)
   end;
 })

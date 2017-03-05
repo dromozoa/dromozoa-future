@@ -23,7 +23,7 @@ local class = {}
 function class.new()
   return {
     selector = unix.selector();
-    selector_timeout = unix.timespec(0.25, unix.TIMESPEC_TYPE_DURATION);
+    selector_timeout = unix.timespec({ tv_sec = 0, tv_nsec = 250000000 }, unix.TIMESPEC_TYPE_DURATION);
     read_handlers = {};
     write_handlers = {};
   }
@@ -33,7 +33,8 @@ function class:add_handler(handler)
   local fd = unix.fd.get(handler.fd)
   local event = handler.event
   if event == "read" then
-    assert(self.read_handlers[fd] == nil)
+    local read_handlers = self.read_handlers
+    assert(read_handlers[fd] == nil)
     if self.write_handlers[fd] == nil then
       if not self.selector:add(fd, unix.SELECTOR_READ) then
         return unix.get_last_error()
@@ -43,11 +44,11 @@ function class:add_handler(handler)
         return unix.get_last_error()
       end
     end
-    self.read_handlers[fd] = handler
-    handler.status = true
+    read_handlers[fd] = handler
     return self
   elseif event == "write" then
-    assert(self.write_handlers[fd] == nil)
+    local write_handlers = self.write_handlers
+    assert(write_handlers[fd] == nil)
     if self.read_handlers[fd] == nil then
       if not self.selector:add(fd, unix.SELECTOR_WRITE) then
         return unix.get_last_error()
@@ -57,8 +58,7 @@ function class:add_handler(handler)
         return unix.get_last_error()
       end
     end
-    self.write_handlers[fd] = handler
-    handler.status = true
+    write_handlers[fd] = handler
     return self
   end
 end
@@ -67,7 +67,8 @@ function class:remove_handler(handler)
   local fd = unix.fd.get(handler.fd)
   local event = handler.event
   if event == "read" then
-    assert(self.read_handlers[fd] ~= nil)
+    local read_handlers = self.read_handlers
+    assert(read_handlers[fd] ~= nil)
     if self.write_handlers[fd] == nil then
       if not self.selector:del(fd) then
         return unix.get_last_error()
@@ -77,11 +78,11 @@ function class:remove_handler(handler)
         return unix.get_last_error()
       end
     end
-    self.read_handlers[fd] = nil
-    handler.status = nil
+    read_handlers[fd] = nil
     return self
   elseif event == "write" then
-    assert(self.write_handlers[fd] ~= nil)
+    local write_handlers = self.write_handlers
+    assert(write_handlers[fd] ~= nil)
     if self.read_handlers[fd] == nil then
       if not self.selector:del(fd) then
         return unix.get_last_error()
@@ -91,38 +92,40 @@ function class:remove_handler(handler)
         return unix.get_last_error()
       end
     end
-    self.write_handlers[fd] = nil
-    handler.status = nil
+    write_handlers[fd] = nil
     return self
   end
 end
 
 function class:dispatch()
-  local result = self.selector:select(self.selector_timeout)
+  local selector = self.selector
+  local result = selector:select(self.selector_timeout)
   if not result then
     if unix.get_last_errno() ~= unix.EINTR then
       return unix.get_last_error()
     end
   else
+    local read_handlers = self.read_handlers
+    local write_handlers = self.write_handlers
     for i = 1, result do
-      local fd, event = self.selector:event(i)
+      local fd, event = selector:event(i)
       if uint32.band(event, unix.SELECTOR_READ) ~= 0 then
-        self.read_handlers[fd]:dispatch(self, "read")
+        read_handlers[fd]:dispatch(self, "read")
       end
       if uint32.band(event, unix.SELECTOR_WRITE) ~= 0 then
-        self.write_handlers[fd]:dispatch(self, "write")
+        write_handlers[fd]:dispatch(self, "write")
       end
     end
   end
   return self
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function ()
-    return setmetatable(class.new(), metatable)
+    return setmetatable(class.new(), class.metatable)
   end;
 })

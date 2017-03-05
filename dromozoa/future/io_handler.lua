@@ -32,12 +32,12 @@ function class:dispatch(service, event)
   resume_thread(self.thread, service, self, event)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, fd, event, thread)
-    return setmetatable(class.new(fd, event, thread), metatable)
+    return setmetatable(class.new(fd, event, thread), class.metatable)
   end;
 })

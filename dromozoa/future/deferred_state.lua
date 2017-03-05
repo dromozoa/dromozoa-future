@@ -20,32 +20,32 @@ local promise = require "dromozoa.future.promise"
 local resume_thread = require "dromozoa.future.resume_thread"
 local state = require "dromozoa.future.state"
 
+local super = state
 local class = {}
 
 function class.new(service, thread)
-  local self = state.new(service)
+  local self = super.new(service)
   local thread = create_thread(thread)
   self.deferred = coroutine.create(function ()
-    local promise = promise(self)
-    resume_thread(thread, promise)
+    resume_thread(thread, promise(self))
   end)
   return self
 end
 
 function class:launch()
-  state.launch(self)
+  super.launch(self)
   local deferred = self.deferred
   self.deferred = nil
   resume_thread(deferred)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, thread)
-    return setmetatable(class.new(service, thread), metatable)
+    return setmetatable(class.new(service, thread), class.metatable)
   end;
 })

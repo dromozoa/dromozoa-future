@@ -18,6 +18,7 @@
 local pack = require "dromozoa.commons.pack"
 local state = require "dromozoa.future.state"
 
+local super = state
 local class = {}
 
 function class.new(...)
@@ -31,13 +32,13 @@ function class:wait_for()
   return self:wait()
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, ...)
-    return setmetatable(class.new(...), metatable)
+    return setmetatable(class.new(...), class.metatable)
   end;
 })

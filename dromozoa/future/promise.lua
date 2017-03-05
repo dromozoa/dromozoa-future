@@ -28,20 +28,20 @@ function class:set(...)
   return self
 end
 
-function class:error(message, level)
-  return self.state:error(message, level)
+function class:error(...)
+  return self.state:error(...)
 end
 
 function class:assert(...)
   return self.state:assert(...)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __call = function (_, service, state)
-    return setmetatable(class.new(service, state), metatable)
+  __call = function (_, state)
+    return setmetatable(class.new(state), class.metatable)
   end;
 })
