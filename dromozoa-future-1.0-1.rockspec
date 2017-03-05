@@ -26,6 +26,7 @@ build = {
     ["dromozoa.future.future"] = "dromozoa/future/future.lua";
     ["dromozoa.future.future_service"] = "dromozoa/future/future_service.lua";
     ["dromozoa.future.futures"] = "dromozoa/future/futures.lua";
+    ["dromozoa.future.io_futures"] = "dromozoa/future/io_futures.lua";
     ["dromozoa.future.io_handler"] = "dromozoa/future/io_handler.lua";
     ["dromozoa.future.io_handler_state"] = "dromozoa/future/io_handler_state.lua";
     ["dromozoa.future.io_service"] = "dromozoa/future/io_service.lua";
