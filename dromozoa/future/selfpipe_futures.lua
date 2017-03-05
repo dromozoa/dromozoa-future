@@ -46,10 +46,12 @@ function class.wait(service, pid)
       local result, code, status = unix.wait(pid, unix.WNOHANG)
       if result then
         if result == 0 then
-          if service.shared_selfpipe_future == nil or service.shared_selfpipe_future:is_ready() then
-            service.shared_selfpipe_future = service:make_shared_future(service:selfpipe())
+          local shared_selfpipe_future = service.shared_selfpipe_future
+          if shared_selfpipe_future == nil or shared_selfpipe_future:is_ready() then
+            shared_selfpipe_future = service:make_shared_future(service:selfpipe())
+            service.shared_selfpipe_future = shared_selfpipe_future
           end
-          service.shared_selfpipe_future:share():get()
+          shared_selfpipe_future:share():get()
         else
           return promise:set(result, code, status)
         end

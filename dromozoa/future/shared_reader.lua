@@ -27,10 +27,13 @@ function class.new(service, fd)
 end
 
 function class:read(size)
-  if self.shared_future == nil or self.shared_future:is_ready() then
-    self.shared_future = self.service:make_shared_future(self.service:read(self.fd, size))
+  local shared_future = self.shared_future
+  if shared_future == nil or shared_future:is_ready() then
+    local service = self.service
+    shared_future = service:make_shared_future(service:read(self.fd, size))
+    self.shared_future = shared_future
   end
-  return self.shared_future:share()
+  return shared_future:share()
 end
 
 function class:share()
