@@ -28,7 +28,11 @@ assert(fd2:close())
 
 local ctx = assert(zmq.context())
 
-assert(getmetatable(ctx).__index == zmq.context)
-assert(getmetatable(ctx) == debug.getregistry()["dromozoa.zmq.context"])
+local socket = assert(ctx:socket(zmq.ZMQ_REP))
+assert(socket:bind("tcp://127.0.0.1:5555"))
 
+assert(getmetatable(socket).__index == zmq.socket)
+assert(getmetatable(socket) == debug.getregistry()["dromozoa.zmq.socket"])
+
+assert(socket:close())
 assert(ctx:term())
