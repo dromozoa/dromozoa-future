@@ -44,7 +44,6 @@ function class:add_handler(handler)
       end
     end
     self.read_handlers[fd] = handler
-    handler.status = true
     return self
   elseif event == "write" then
     assert(self.write_handlers[fd] == nil)
@@ -58,7 +57,6 @@ function class:add_handler(handler)
       end
     end
     self.write_handlers[fd] = handler
-    handler.status = true
     return self
   end
 end
@@ -78,7 +76,6 @@ function class:remove_handler(handler)
       end
     end
     self.read_handlers[fd] = nil
-    handler.status = nil
     return self
   elseif event == "write" then
     assert(self.write_handlers[fd] ~= nil)
@@ -92,7 +89,6 @@ function class:remove_handler(handler)
       end
     end
     self.write_handlers[fd] = nil
-    handler.status = nil
     return self
   end
 end
