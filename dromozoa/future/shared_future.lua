@@ -35,12 +35,12 @@ function class:share()
   return future(share_state(self.service, self.shared_state))
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, shared_state)
-    return setmetatable(class.new(service, shared_state), metatable)
+    return setmetatable(class.new(service, shared_state), class.metatable)
   end;
 })

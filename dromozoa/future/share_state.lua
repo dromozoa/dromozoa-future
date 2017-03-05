@@ -41,13 +41,13 @@ function class:resume()
   self.shared_state:resume()
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __index = super;
   __call = function (_, service, shared_state)
-    return setmetatable(class.new(service, shared_state), metatable)
+    return setmetatable(class.new(service, shared_state), class.metatable)
   end;
 })
