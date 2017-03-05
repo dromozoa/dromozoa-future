@@ -83,6 +83,7 @@ end
 
 function class:resume()
   local this = self.state
+  assert(this:is_running() or this:is_suspended() or this:is_ready())
   if this:is_suspended() then
     this:resume()
   elseif this:is_ready() then
