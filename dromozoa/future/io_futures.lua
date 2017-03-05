@@ -16,7 +16,6 @@
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
 local sequence = require "dromozoa.commons.sequence"
-local translate_range = require "dromozoa.commons.translate_range"
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
 local future = require "dromozoa.future.future"
