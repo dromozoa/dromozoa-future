@@ -40,6 +40,7 @@ build = {
     ["dromozoa.future.reader_source"] = "dromozoa/future/reader_source.lua";
     ["dromozoa.future.ready_state"] = "dromozoa/future/ready_state.lua";
     ["dromozoa.future.resume_thread"] = "dromozoa/future/resume_thread.lua";
+    ["dromozoa.future.selfpipe_futures"] = "dromozoa/future/selfpipe_futures.lua";
     ["dromozoa.future.share_state"] = "dromozoa/future/share_state.lua";
     ["dromozoa.future.shared_future"] = "dromozoa/future/shared_future.lua";
     ["dromozoa.future.shared_reader"] = "dromozoa/future/shared_reader.lua";

@@ -158,47 +158,6 @@ function class.make_writer(service, fd)
   return writer(service, fd)
 end
 
-function class.selfpipe(service)
-  return service:deferred(function (promise)
-    local result = unix.selfpipe.read()
-    if result > 0 then
-      return promise:set(result)
-    else
-      local future = service:io_handler(unix.selfpipe.get(), "read", function (promise)
-        while true do
-          local result = unix.selfpipe.read()
-          if result > 0 then
-            return promise:set(result)
-          else
-            promise = coroutine.yield()
-          end
-        end
-      end)
-      return promise:set(future:get())
-    end
-  end)
-end
-
-function class.wait(service, pid)
-  return service:deferred(function (promise)
-    while true do
-      local result, code, status = unix.wait(pid, unix.WNOHANG)
-      if result then
-        if result == 0 then
-          if service.shared_selfpipe_future == nil or service.shared_selfpipe_future:is_ready() then
-            service.shared_selfpipe_future = service:make_shared_future(service:selfpipe())
-          end
-          service.shared_selfpipe_future:share():get()
-        else
-          return promise:set(result, code, status)
-        end
-      else
-        return promise:set(unix.get_last_error())
-      end
-    end
-  end)
-end
-
 function class.bind_tcp(service, nodename, servname)
   return service:deferred(function (promise)
     local addrinfo, message, code = service:getaddrinfo(nodename, servname, { ai_socktype = unix.SOCK_STREAM, ai_flags = unix.AI_PASSIVE }):get()
