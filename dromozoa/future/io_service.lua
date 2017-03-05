@@ -23,7 +23,7 @@ local class = {}
 function class.new()
   return {
     selector = unix.selector();
-    selector_timeout = unix.timespec(0.25, unix.TIMESPEC_TYPE_DURATION);
+    selector_timeout = unix.timespec({ tv_sec = 0, tv_nsec = 250000000 }, unix.TIMESPEC_TYPE_DURATION);
     read_handlers = {};
     write_handlers = {};
   }
@@ -117,12 +117,12 @@ function class:dispatch()
   return self
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function ()
-    return setmetatable(class.new(), metatable)
+    return setmetatable(class.new(), class.metatable)
   end;
 })
