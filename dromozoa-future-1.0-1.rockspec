@@ -12,14 +12,15 @@ description = {
 }
 dependencies = {
   "dromozoa-commons";
-  "dromozoa-dyld";
   "dromozoa-curl";
+  "dromozoa-dyld";
   "dromozoa-unix";
   "dromozoa-zmq";
 }
 build = {
   type = "builtin";
   modules = {
+    ["dromozoa.future.async_futures"] = "dromozoa/future/async_futures.lua";
     ["dromozoa.future.async_state"] = "dromozoa/future/async_state.lua";
     ["dromozoa.future.create_thread"] = "dromozoa/future/create_thread.lua";
     ["dromozoa.future.deferred_state"] = "dromozoa/future/deferred_state.lua";

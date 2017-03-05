@@ -15,16 +15,15 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
+local sequence = require "dromozoa.commons.sequence"
 local deferred_state = require "dromozoa.future.deferred_state"
 local future = require "dromozoa.future.future"
-local io_futures = require "dromozoa.future.io_futures"
 local latch_state = require "dromozoa.future.latch_state"
 local make_ready_future = require "dromozoa.future.make_ready_future"
 local shared_future = require "dromozoa.future.shared_future"
 local shared_state = require "dromozoa.future.shared_state"
 local when_any_table_state = require "dromozoa.future.when_any_table_state"
 
-local super = io_futures
 local class = {}
 
 function class.deferred(service, thread)
@@ -53,6 +52,17 @@ function class.make_shared_future(service, future)
   return shared_future(service, shared_state(service, state))
 end
 
+local supers = sequence()
+supers:push(require "dromozoa.future.async_futures")
+supers:push(require "dromozoa.future.io_futures")
+
 return setmetatable(class, {
-  __index = super;
+  __index = function (_, key)
+    for super in supers:each() do
+      local value = super[key]
+      if value ~= nil then
+        return value
+      end
+    end
+  end;
 })

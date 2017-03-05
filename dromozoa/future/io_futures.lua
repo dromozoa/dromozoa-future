@@ -19,7 +19,6 @@ local sequence = require "dromozoa.commons.sequence"
 local translate_range = require "dromozoa.commons.translate_range"
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
-local async_state = require "dromozoa.future.async_state"
 local future = require "dromozoa.future.future"
 local io_handler_state = require "dromozoa.future.io_handler_state"
 local reader = require "dromozoa.future.reader"
@@ -196,18 +195,6 @@ function class.wait(service, pid)
       end
     end
   end)
-end
-
-function class.getaddrinfo(service, nodename, servname, hints)
-  return future(async_state(service, unix.async_getaddrinfo(nodename, servname, hints)))
-end
-
-function class.getnameinfo(service, address, flags)
-  return future(async_state(service, address:async_getnameinfo(flags)))
-end
-
-function class.nanosleep(service, tv1)
-  return future(async_state(service, unix.async_nanosleep(tv1)))
 end
 
 function class.bind_tcp(service, nodename, servname)
