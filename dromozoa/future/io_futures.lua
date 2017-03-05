@@ -30,7 +30,7 @@ local function is_resource_unavailable_try_again()
   return code == unix.EAGAIN or code == unix.EWOULDBLOCK
 end
 
-local COE_NDELAY_ON = uint32.bor(unix.SOCK_CLOEXEC, unix.SOCK_NONBLOCK)
+local SOCK_COE_NDELAY_ON = uint32.bor(unix.SOCK_CLOEXEC, unix.SOCK_NONBLOCK)
 
 local class = {}
 
@@ -41,14 +41,14 @@ end
 function class.accept(service, fd)
   return service:deferred(function (promise)
     assert(fd:is_ndelay_on())
-    local result, address = fd:accept(COE_NDELAY_ON)
+    local result, address = fd:accept(SOCK_COE_NDELAY_ON)
     if result then
       return promise:set(result, address)
     elseif is_resource_unavailable_try_again() then
       local future = service:io_handler(fd, "read", function (promise)
         while true do
           assert(fd:is_ndelay_on())
-          local result, address = fd:accept(COE_NDELAY_ON)
+          local result, address = fd:accept(SOCK_COE_NDELAY_ON)
           if result then
             return promise:set(result, address)
           elseif is_resource_unavailable_try_again() then
@@ -165,7 +165,7 @@ function class.bind_tcp(service, nodename, servname)
     end
     local result = sequence()
     for ai in sequence.each(addrinfo) do
-      local fd = unix.socket(ai.ai_family, COE_NDELAY_ON, ai.ai_protocol)
+      local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
       if not fd then
         return promise:set(unix.get_last_error())
       end
@@ -193,7 +193,7 @@ function class.connect_tcp(service, nodename, servname)
     end
     local future
     for ai in sequence.each(addrinfo) do
-      local fd = unix.socket(ai.ai_family, COE_NDELAY_ON, ai.ai_protocol)
+      local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
       if not fd then
         return promise:set(unix.get_last_error())
       end
