@@ -36,9 +36,6 @@ function class.new(service, state)
     state = state;
     share_states = sequence();
   }
-  self.propagator = coroutine.create(function ()
-    propagate(self)
-  end)
   return self
 end
 
@@ -48,23 +45,28 @@ end
 
 function class:launch(share_state)
   self.share_states:push(share_state)
-  if self.state:is_ready() then
+  local this = self.state
+  if this:is_ready() then
     propagate(self)
-  elseif self.state:is_initial() or self.state:is_suspended() then
-    local current_state = self.service:get_current_state()
-    self.service:set_current_state(nil)
-    if self.state:dispatch() then
+  elseif this:is_initial() or this:is_suspended() then
+    local service = self.service
+    local current_state = service:get_current_state()
+    service:set_current_state(nil)
+    if this:dispatch() then
       propagate(self)
     else
-      self.state.caller = self.propagator
+      this.caller = coroutine.create(function ()
+        propagate(self)
+      end)
     end
-    self.service:set_current_state(current_state)
+    service:set_current_state(current_state)
   end
 end
 
 function class:suspend()
-  assert(self.state:is_running() or self.state:is_ready())
-  if self.state:is_running() then
+  local this = self.state
+  assert(this:is_running() or this:is_ready())
+  if this:is_running() then
     local is_running = false
     for share_state in self.share_states:each() do
       assert(share_state:is_running() or share_state:is_suspended())
@@ -74,26 +76,27 @@ function class:suspend()
       end
     end
     if not is_running then
-      self.state:suspend()
+      this:suspend()
     end
   end
 end
 
 function class:resume()
-  assert(self.state:is_running() or self.state:is_suspended() or self.state:is_ready())
-  if self.state:is_ready() then
+  local this = self.state
+  assert(this:is_running() or this:is_suspended() or this:is_ready())
+  if this:is_ready() then
     propagate(self)
-  elseif self.state:is_suspended() then
-    self.state:resume()
+  elseif this:is_suspended() then
+    this:resume()
   end
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, state)
-    return setmetatable(class.new(service, state), metatable)
+    return setmetatable(class.new(service, state), class.metatable)
   end;
 })
