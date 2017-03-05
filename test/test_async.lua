@@ -110,7 +110,7 @@ assert(service:dispatch(function (service)
   print("--5")
   addrinfo:push(unpack(assert(f5:get())))
   print("--6")
-  print(dumper.encode(addrinfo))
+  -- print(dumper.encode(addrinfo, { pretty = true }))
 
   service:stop()
 end))

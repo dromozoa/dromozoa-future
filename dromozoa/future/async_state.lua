@@ -19,47 +19,46 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local state = require "dromozoa.future.state"
 
+local super = state
 local class = {}
 
 function class.new(service, task)
-  local self = state.new(service)
+  local self = super.new(service)
   self.task = task
-  self.task_thread = coroutine.create(function (task)
+  return self
+end
+
+function class:launch()
+  super.launch(self)
+  local task = self.task
+  self.task = nil
+  assert(self.service:add_task(task, coroutine.create(function (task)
     local task_result = pack(task:result())
     if self:is_running() then
       self:set(unpack(task_result, 1, task_result.n))
     else
       self.task_result = task_result
     end
-  end)
-  return self
-end
-
-function class:launch()
-  state.launch(self)
-  local task = self.task
-  local task_thread = self.task_thread
-  self.task = nil
-  self.task_thread = nil
-  assert(self.service:add_task(task, task_thread))
+  end)))
 end
 
 function class:resume()
-  state.resume(self)
+  super.resume(self)
   local task_result = self.task_result
   self.task_result = nil
   if task_result then
+    assert(self.caller == nil)
     self:set(unpack(task_result, 1, task_result.n))
   end
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
-  __index = state;
+  __index = super;
   __call = function (_, service, task)
-    return setmetatable(class.new(service, task), metatable)
+    return setmetatable(class.new(service, task), class.metatable)
   end;
 })
