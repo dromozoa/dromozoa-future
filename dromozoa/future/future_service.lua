@@ -34,11 +34,12 @@ function class.new()
     async_threads = {};
   }
   return class.add_handler(self, io_handler(self.async_service:get(), "read", function ()
+    local async_service = self.async_service
     while true do
-      local result = self.async_service:read()
+      local result = async_service:read()
       if result > 0 then
         while true do
-          local task = self.async_service:pop()
+          local task = async_service:pop()
           if task then
             local thread = self.async_threads[task]
             self.async_threads[task] = nil
@@ -107,12 +108,14 @@ function class:dispatch(thread)
       return self
     end
   end
+  local timer_service = self.timer_service
+  local io_service = self.io_service
   while true do
-    self.timer_service:dispatch()
+    timer_service:dispatch()
     if self.stopped then
       return self
     end
-    self.io_service:dispatch()
+    io_service:dispatch()
     if self.stopped then
       return self
     end

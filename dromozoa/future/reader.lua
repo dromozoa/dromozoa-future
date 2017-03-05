@@ -30,18 +30,21 @@ end
 
 function class:read(count)
   return self.service:deferred(function (promise)
+    local source = self.source
+    local buffer = self.buffer
+    local buffer_size = self.buffer_size
     while true do
-      local result = self.buffer:read(count)
+      local result = buffer:read(count)
       if result then
         return promise:set(result)
       end
-      local result, message, code = self.source:read(self.buffer_size):get()
+      local result, message, code = source:read(buffer_size):get()
       if not result then
         return promise:set(nil, message, code)
       elseif result == "" then
-        self.buffer:close()
+        buffer:close()
       else
-        self.buffer:write(result)
+        buffer:write(result)
       end
     end
   end)
@@ -55,18 +58,21 @@ end
 
 function class:read_any(count)
   return self.service:deferred(function (promise)
+    local source = self.source
+    local buffer = self.buffer
+    local buffer_size = self.buffer_size
     while true do
-      local result = self.buffer:read_some(count)
+      local result = buffer:read_some(count)
       if result ~= "" or self.buffer.closed then
         return promise:set(result)
       end
-      local result, message, code = self.source:read(self.buffer_size):get()
+      local result, message, code = source:read(buffer_size):get()
       if not result then
         return promise:set(nil, message, code)
       elseif result == "" then
-        self.buffer:close()
+        buffer:close()
       else
-        self.buffer:write(result)
+        buffer:write(result)
       end
     end
   end)
@@ -74,18 +80,21 @@ end
 
 function class:read_until(pattern)
   return self.service:deferred(function (promise)
+    local source = self.source
+    local buffer = self.buffer
+    local buffer_size = self.buffer_size
     while true do
-      local result, capture = self.buffer:read_until(pattern)
+      local result, capture = buffer:read_until(pattern)
       if result then
         return promise:set(result, capture)
       end
-      local result, message, code = self.source:read(self.buffer_size):get()
+      local result, message, code = source:read(buffer_size):get()
       if not result then
         return promise:set(nil, message, code)
       elseif result == "" then
-        self.buffer:close()
+        buffer:close()
       else
-        self.buffer:write(result)
+        buffer:write(result)
       end
     end
   end)
