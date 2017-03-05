@@ -28,12 +28,12 @@ function class:read(size)
   return self.service:read(self.fd, size)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, fd)
-    return setmetatable(class.new(service, fd), metatable)
+    return setmetatable(class.new(service, fd), class.metatable)
   end;
 })

@@ -91,12 +91,12 @@ function class:read_until(pattern)
   end)
 end
 
-local metatable = {
+class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
   __call = function (_, service, source)
-    return setmetatable(class.new(service, source), metatable)
+    return setmetatable(class.new(service, source), class.metatable)
   end;
 })
