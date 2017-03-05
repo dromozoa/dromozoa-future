@@ -78,7 +78,7 @@ local super = state
 local class = {}
 
 function class.new(service, count, ...)
-  local self = state.new(service)
+  local self = super.new(service)
   local futures = pack(...)
   self.futures = futures
   if count == "n" then
@@ -91,22 +91,22 @@ function class.new(service, count, ...)
 end
 
 function class:launch()
-  state.launch(self)
+  super.launch(self)
   dispatch(self)
 end
 
 function class:suspend()
-  state.suspend(self)
+  super.suspend(self)
   suspend(self)
 end
 
 function class:resume()
-  state.resume(self)
+  super.resume(self)
   dispatch(self)
 end
 
 function class:finish()
-  state.finish(self)
+  super.finish(self)
   suspend(self)
 end
 

@@ -30,15 +30,10 @@ local function count_down(self, key)
   local counted = self.counted
   if counted[key] == nil then
     counted[key] = true
-    local count = self.count - 1
-    self.count = count
-    if count == 0 then
-      self:set(key)
-      self.futures = nil
-      self.count = nil
-      self.counted = nil
-      return true
-    end
+    self:set(key)
+    self.futures = nil
+    self.counted = nil
+    return true
   end
   return false
 end
@@ -76,30 +71,29 @@ local super = state
 local class = {}
 
 function class.new(service, futures)
-  local self = state.new(service)
+  local self = super.new(service)
   self.futures = futures
-  self.count = 1
   self.counted = {}
   return self
 end
 
 function class:launch()
-  state.launch(self)
+  super.launch(self)
   dispatch(self)
 end
 
 function class:suspend()
-  state.suspend(self)
+  super.suspend(self)
   suspend(self)
 end
 
 function class:resume()
-  state.resume(self)
+  super.resume(self)
   dispatch(self)
 end
 
 function class:finish()
-  state.finish(self)
+  super.finish(self)
   suspend(self)
 end
 
