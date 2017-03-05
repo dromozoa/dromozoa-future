@@ -46,9 +46,7 @@ end
 function class:launch(share_state)
   self.share_states:push(share_state)
   local this = self.state
-  if this:is_ready() then
-    propagate(self)
-  elseif this:is_initial() or this:is_suspended() then
+  if this:is_initial() or this:is_suspended() then
     local service = self.service
     local current_state = service:get_current_state()
     service:set_current_state(nil)
@@ -60,6 +58,8 @@ function class:launch(share_state)
       end)
     end
     service:set_current_state(current_state)
+  elseif this:is_ready() then
+    propagate(self)
   end
 end
 
@@ -83,11 +83,10 @@ end
 
 function class:resume()
   local this = self.state
-  assert(this:is_running() or this:is_suspended() or this:is_ready())
-  if this:is_ready() then
-    propagate(self)
-  elseif this:is_suspended() then
+  if this:is_suspended() then
     this:resume()
+  elseif this:is_ready() then
+    propagate(self)
   end
 end
 
