@@ -24,7 +24,7 @@ local super = state
 local class = {}
 
 function class.new(service, thread)
-  local self = state.new(service)
+  local self = super.new(service)
   local thread = create_thread(thread)
   self.deferred = coroutine.create(function ()
     resume_thread(thread, promise(self))
@@ -33,7 +33,7 @@ function class.new(service, thread)
 end
 
 function class:launch()
-  state.launch(self)
+  super.launch(self)
   local deferred = self.deferred
   self.deferred = nil
   resume_thread(deferred)
