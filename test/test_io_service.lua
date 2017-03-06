@@ -18,13 +18,13 @@
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
 local io_handler = require "dromozoa.future.io_handler"
-local io_selector_service = require "dromozoa.future.io_selector_service"
+local io_service = require "dromozoa.future.io_service"
 
 local fd1, fd2 = unix.socketpair(unix.AF_UNIX, uint32.bor(unix.SOCK_STREAM, unix.SOCK_CLOEXEC))
 assert(fd1:ndelay_on())
 assert(fd2:ndelay_on())
 
-local service = io_selector_service()
+local service = io_service()
 
 assert(service:dispatch())
 
