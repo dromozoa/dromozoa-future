@@ -15,7 +15,6 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local zmq = require "dromozoa.zmq"
 local create_thread = require "dromozoa.future.create_thread"
 local resume_thread = require "dromozoa.future.resume_thread"
 
