@@ -24,10 +24,10 @@ local state = require "dromozoa.future.state"
 local super = state
 local class = {}
 
-function class.new(service, fd, event, thread)
+function class.new(service, channel, event, thread)
   local self = super.new(service)
   local thread = create_thread(thread)
-  self.io_handler = io_handler(fd, event, coroutine.create(function ()
+  self.handler = io_handler(channel, event, coroutine.create(function ()
     local promise = promise(self)
     while true do
       resume_thread(thread, promise)
@@ -42,24 +42,24 @@ end
 
 function class:launch()
   super.launch(self)
-  assert(self.service:add_handler(self.io_handler))
+  assert(self.service:add_handler(self.handler))
 end
 
 function class:suspend()
   super.suspend(self)
-  assert(self.service:remove_handler(self.io_handler))
+  assert(self.service:remove_handler(self.handler))
 end
 
 function class:resume()
   super.resume(self)
-  assert(self.service:add_handler(self.io_handler))
+  assert(self.service:add_handler(self.handler))
 end
 
 function class:finish()
   super.finish(self)
-  local io_handler = self.io_handler
-  self.io_handler = nil
-  assert(self.service:remove_handler(io_handler))
+  local handler = self.handler
+  self.handler = nil
+  assert(self.service:remove_handler(handler))
 end
 
 class.metatable = {
@@ -68,7 +68,7 @@ class.metatable = {
 
 return setmetatable(class, {
   __index = super;
-  __call = function (_, service, fd, event, thread)
-    return setmetatable(class.new(service, fd, event, thread), class.metatable)
+  __call = function (_, service, channel, event, thread)
+    return setmetatable(class.new(service, channel, event, thread), class.metatable)
   end;
 })

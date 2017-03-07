@@ -30,7 +30,7 @@ local function is_resource_unavailable_try_again()
   return code == unix.EAGAIN or code == unix.EWOULDBLOCK
 end
 
-local COE_NDELAY_ON = uint32.bor(unix.SOCK_CLOEXEC, unix.SOCK_NONBLOCK)
+local SOCK_COE_NDELAY_ON = uint32.bor(unix.SOCK_CLOEXEC, unix.SOCK_NONBLOCK)
 
 local class = {}
 
@@ -41,14 +41,14 @@ end
 function class.accept(service, fd)
   return service:deferred(function (promise)
     assert(fd:is_ndelay_on())
-    local result, address = fd:accept(COE_NDELAY_ON)
+    local result, address = fd:accept(SOCK_COE_NDELAY_ON)
     if result then
       return promise:set(result, address)
     elseif is_resource_unavailable_try_again() then
       local future = service:io_handler(fd, "read", function (promise)
         while true do
           assert(fd:is_ndelay_on())
-          local result, address = fd:accept(COE_NDELAY_ON)
+          local result, address = fd:accept(SOCK_COE_NDELAY_ON)
           if result then
             return promise:set(result, address)
           elseif is_resource_unavailable_try_again() then
@@ -160,13 +160,13 @@ end
 function class.bind_tcp(service, nodename, servname)
   return service:deferred(function (promise)
     local addrinfo, message, code = service:getaddrinfo(nodename, servname, { ai_socktype = unix.SOCK_STREAM, ai_flags = unix.AI_PASSIVE }):get()
-    if not addrinfo then
+    if addrinfo == nil then
       return promise:set(nil, message, code)
     end
     local result = sequence()
     for ai in sequence.each(addrinfo) do
-      local fd = unix.socket(ai.ai_family, COE_NDELAY_ON, ai.ai_protocol)
-      if not fd then
+      local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
+      if fd == nil then
         return promise:set(unix.get_last_error())
       end
       if fd:setsockopt(unix.SOL_SOCKET, unix.SO_REUSEADDR, 1) and fd:bind(ai.ai_addr) and fd:listen() then
@@ -188,13 +188,13 @@ end
 function class.connect_tcp(service, nodename, servname)
   return service:deferred(function (promise)
     local addrinfo, message, code = service:getaddrinfo(nodename, servname, { ai_socktype = unix.SOCK_STREAM }):get()
-    if not addrinfo then
+    if addrinfo == nil then
       return promise:set(nil, message, code)
     end
     local future
     for ai in sequence.each(addrinfo) do
-      local fd = unix.socket(ai.ai_family, COE_NDELAY_ON, ai.ai_protocol)
-      if not fd then
+      local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
+      if fd == nil then
         return promise:set(unix.get_last_error())
       end
       future = service:connect(fd, ai.ai_addr)

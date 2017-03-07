@@ -35,7 +35,8 @@ local function count_down(self, key)
     local count = self.count - 1
     self.count = count
     if count == 0 then
-      self:set(unpack(self.futures))
+      local futures = self.futures
+      self:set(unpack(futures, 1, futures.n))
       self.futures = nil
       self.count = nil
       self.counted = nil

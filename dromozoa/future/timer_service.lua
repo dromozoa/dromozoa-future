@@ -55,7 +55,7 @@ function class:dispatch()
     end
   end
   for _, thread, handle in range:each() do
-    if not thread then
+    if thread == nil then
       handle:remove()
     end
   end
