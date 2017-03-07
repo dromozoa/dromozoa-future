@@ -18,77 +18,17 @@
 local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local io_handler = require "dromozoa.future.io_handler"
-local io_poller_service = require "dromozoa.future.io_poller_service"
 local io_selector_service = require "dromozoa.future.io_selector_service"
 
+local super = io_selector_service
 local class = {}
-
-function class.new()
-  local poller_service = io_poller_service()
-  local selector_service = io_selector_service()
-  local self = {
-    poller_service = poller_service;
-    selector_service = selector_service;
-  }
-  poller_service:add_handler(io_handler(selector_service.selector:get(), "read", function ()
-    while true do
-      self.selector_result = pack(selector_service:dispatch())
-      coroutine.yield()
-    end
-  end))
-  return self
-end
-
-function class:add_handler(handler)
-  local service
-  if handler.socket == nil then
-    service = self.selector_service
-  else
-    service = self.poller_service
-  end
-  local result, message, code = service:add_handler(handler)
-  if not result then
-    return nil, message, code
-  end
-  return self
-end
-
-function class:remove_handler(handler)
-  local service
-  if handler.socket == nil then
-    service = self.selector_service
-  else
-    service = self.poller_service
-  end
-  local result, message, code = service:remove_handler(handler)
-  if not result then
-    return nil, message, code
-  end
-  return self
-end
-
-function class:dispatch()
-  self.selector_result = nil
-  local result, message, code = self.poller_service:dispatch()
-  if not result then
-    return nil, message, code
-  end
-  local selector_result = self.selector_result
-  if selector_result ~= nil then
-    self.selector_result = nil
-    result, message, code = unpack(selector_result, 1, selector_result.n)
-    if not result then
-      return nil, message, code
-    end
-  end
-  return self
-end
 
 class.metatable = {
   __index = class;
 }
 
 return setmetatable(class, {
+  __index = super;
   __call = function ()
     return setmetatable(class.new(), class.metatable)
   end;
