@@ -31,6 +31,7 @@ build = {
     ["dromozoa.future.io_handler"] = "dromozoa/future/io_handler.lua";
     ["dromozoa.future.io_handler_state"] = "dromozoa/future/io_handler_state.lua";
     ["dromozoa.future.io_poller_service"] = "dromozoa/future/io_poller_service.lua";
+    ["dromozoa.future.io_selector_service"] = "dromozoa/future/io_selector_service.lua";
     ["dromozoa.future.io_service"] = "dromozoa/future/io_service.lua";
     ["dromozoa.future.latch_state"] = "dromozoa/future/latch_state.lua";
     ["dromozoa.future.make_ready_future"] = "dromozoa/future/make_ready_future.lua";
