@@ -32,7 +32,7 @@ local class = {}
 
 function class.new()
   return {
-    poller_timeout = 20;
+    poller_timeout = 100;
     poller_items = sequence();
   }
 end
