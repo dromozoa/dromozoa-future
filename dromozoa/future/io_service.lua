@@ -40,48 +40,48 @@ function class.new()
 end
 
 function class:add_handler(handler)
-  local result, message, code
+  local service
   if handler.socket == nil then
-    result, message, code = self.selector_service:add_handler(handler)
+    service = self.selector_service
   else
-    result, message, code = self.poller_service:add_handler(handler)
+    service = self.poller_service
   end
-  if result then
-    return self
-  else
+  local result, message, code = service:add_handler(handler)
+  if not result then
     return nil, message, code
   end
+  return self
 end
 
 function class:remove_handler(handler)
-  local result, message, code
+  local service
   if handler.socket == nil then
-    result, message, code = self.selector_service:remove_handler(handler)
+    service = self.selector_service
   else
-    result, message, code = self.poller_service:remove_handler(handler)
+    service = self.poller_service
   end
-  if result then
-    return self
-  else
+  local result, message, code = service:remove_handler(handler)
+  if not result then
     return nil, message, code
   end
+  return self
 end
 
 function class:dispatch()
+  self.selector_result = nil
   local result, message, code = self.poller_service:dispatch()
-  if result then
-    local selector_result = self.selector_result
+  if not result then
+    return nil, message, code
+  end
+  local selector_result = self.selector_result
+  if selector_result ~= nil then
     self.selector_result = nil
-    if selector_result then
-      result, message, code = unpack(selector_result, selector_result.n)
-      if result then
-        return self
-      end
-    else
-      return self
+    result, message, code = unpack(selector_result, 1, selector_result.n)
+    if not result then
+      return nil, message, code
     end
   end
-  return nil, message, code
+  return self
 end
 
 class.metatable = {
