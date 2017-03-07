@@ -160,13 +160,13 @@ end
 function class.bind_tcp(service, nodename, servname)
   return service:deferred(function (promise)
     local addrinfo, message, code = service:getaddrinfo(nodename, servname, { ai_socktype = unix.SOCK_STREAM, ai_flags = unix.AI_PASSIVE }):get()
-    if not addrinfo then
+    if addrinfo == nil then
       return promise:set(nil, message, code)
     end
     local result = sequence()
     for ai in sequence.each(addrinfo) do
       local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
-      if not fd then
+      if fd == nil then
         return promise:set(unix.get_last_error())
       end
       if fd:setsockopt(unix.SOL_SOCKET, unix.SO_REUSEADDR, 1) and fd:bind(ai.ai_addr) and fd:listen() then
@@ -188,13 +188,13 @@ end
 function class.connect_tcp(service, nodename, servname)
   return service:deferred(function (promise)
     local addrinfo, message, code = service:getaddrinfo(nodename, servname, { ai_socktype = unix.SOCK_STREAM }):get()
-    if not addrinfo then
+    if addrinfo == nil then
       return promise:set(nil, message, code)
     end
     local future
     for ai in sequence.each(addrinfo) do
       local fd = unix.socket(ai.ai_family, uint32.bor(ai.ai_socktype, SOCK_COE_NDELAY_ON), ai.ai_protocol)
-      if not fd then
+      if fd == nil then
         return promise:set(unix.get_last_error())
       end
       future = service:connect(fd, ai.ai_addr)
