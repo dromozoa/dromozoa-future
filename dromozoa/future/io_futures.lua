@@ -34,8 +34,8 @@ local SOCK_COE_NDELAY_ON = uint32.bor(unix.SOCK_CLOEXEC, unix.SOCK_NONBLOCK)
 
 local class = {}
 
-function class.io_handler(service, fd, event, thread)
-  return future(io_handler_state(service, fd, event, thread))
+function class.io_handler(service, channel, event, thread)
+  return future(io_handler_state(service, channel, event, thread))
 end
 
 function class.accept(service, fd)
