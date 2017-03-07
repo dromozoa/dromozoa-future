@@ -21,17 +21,18 @@ local zmq = require "dromozoa.zmq"
 
 local class = {}
 
-function class.zmq_msg_recv(service, msg, socket)
+function class.zmq_recv(service, socket)
   return service:deferred(function (promise)
+    local msg = zmq.message()
     local result, message, code = msg:recv(socket, zmq.ZMQ_DONTWAIT)
     if result then
-      return promise:set(result)
+      return promise:set(msg)
     elseif code == unix.EAGAIN then
       local future = service:io_handler(socket, "read", function (promise)
         while true do
           local result, message, code = msg:recv(socket, zmq.ZMQ_DONTWAIT)
           if result then
-            return promise:set(result)
+            return promise:set(msg)
           elseif code == unix.EAGAIN then
             promise = coroutine.yield()
           else
@@ -46,7 +47,10 @@ function class.zmq_msg_recv(service, msg, socket)
   end)
 end
 
-function class.zmq_msg_send(service, msg, socket, flags)
+function class.zmq_send(service, socket, msg, flags)
+  if type(msg) ~= "userdata" then
+    msg = zmq.message(msg)
+  end
   if flags == nil then
     flags = zmq.ZMQ_DONTWAIT
   else
