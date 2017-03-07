@@ -56,6 +56,7 @@ local supers = sequence()
 supers:push(require "dromozoa.future.async_futures")
 supers:push(require "dromozoa.future.io_futures")
 supers:push(require "dromozoa.future.selfpipe_futures")
+supers:push(require "dromozoa.future.zmq_futures")
 
 return setmetatable(class, {
   __index = function (_, key)

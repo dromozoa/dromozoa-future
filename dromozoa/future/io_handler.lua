@@ -15,27 +15,17 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local zmq = require "dromozoa.zmq"
 local create_thread = require "dromozoa.future.create_thread"
 local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 
-function class.new(channel, event, thread)
-  local metatable = getmetatable(channel)
-  if metatable ~= nil and metatable.__index == zmq.socket then
-    return {
-      socket = channel;
-      event = event;
-      thread = create_thread(thread);
-    }
-  else
-    return {
-      fd = channel;
-      event = event;
-      thread = create_thread(thread);
-    }
-  end
+function class.new(fd, event, thread)
+  return {
+    fd = fd;
+    event = event;
+    thread = create_thread(thread);
+  }
 end
 
 function class:dispatch(service, event)
@@ -47,7 +37,7 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __call = function (_, channel, event, thread)
-    return setmetatable(class.new(channel, event, thread), class.metatable)
+  __call = function (_, fd, event, thread)
+    return setmetatable(class.new(fd, event, thread), class.metatable)
   end;
 })

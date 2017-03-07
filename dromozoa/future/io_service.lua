@@ -15,70 +15,106 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local pack = require "dromozoa.commons.pack"
-local unpack = require "dromozoa.commons.unpack"
-local io_handler = require "dromozoa.future.io_handler"
-local io_poller_service = require "dromozoa.future.io_poller_service"
-local io_selector_service = require "dromozoa.future.io_selector_service"
+local uint32 = require "dromozoa.commons.uint32"
+local unix = require "dromozoa.unix"
 
 local class = {}
 
 function class.new()
-  local poller_service = io_poller_service()
-  local selector_service = io_selector_service()
-  local self = {
-    poller_service = poller_service;
-    selector_service = selector_service;
+  return {
+    selector = unix.selector();
+    selector_timeout = unix.timespec({ tv_sec = 0, tv_nsec = 100000000 }, unix.TIMESPEC_TYPE_DURATION);
+    read_handlers = {};
+    write_handlers = {};
   }
-  poller_service:add_handler(io_handler(selector_service.selector:get(), "read", function ()
-    while true do
-      self.selector_result = pack(selector_service:dispatch())
-      coroutine.yield()
-    end
-  end))
-  return self
 end
 
 function class:add_handler(handler)
-  local service
-  if handler.socket == nil then
-    service = self.selector_service
-  else
-    service = self.poller_service
+  local fd = unix.fd.get(handler.fd)
+  local event = handler.event
+  if event == "read" then
+    local read_handlers = self.read_handlers
+    assert(read_handlers[fd] == nil)
+    if self.write_handlers[fd] == nil then
+      if not self.selector:add(fd, unix.SELECTOR_READ) then
+        return unix.get_last_error()
+      end
+    else
+      if not self.selector:mod(fd, unix.SELECTOR_READ_WRITE) then
+        return unix.get_last_error()
+      end
+    end
+    read_handlers[fd] = handler
+    return self
+  elseif event == "write" then
+    local write_handlers = self.write_handlers
+    assert(write_handlers[fd] == nil)
+    if self.read_handlers[fd] == nil then
+      if not self.selector:add(fd, unix.SELECTOR_WRITE) then
+        return unix.get_last_error()
+      end
+    else
+      if not self.selector:mod(fd, unix.SELECTOR_READ_WRITE) then
+        return unix.get_last_error()
+      end
+    end
+    write_handlers[fd] = handler
+    return self
   end
-  local result, message, code = service:add_handler(handler)
-  if not result then
-    return nil, message, code
-  end
-  return self
 end
 
 function class:remove_handler(handler)
-  local service
-  if handler.socket == nil then
-    service = self.selector_service
-  else
-    service = self.poller_service
+  local fd = unix.fd.get(handler.fd)
+  local event = handler.event
+  if event == "read" then
+    local read_handlers = self.read_handlers
+    assert(read_handlers[fd] ~= nil)
+    if self.write_handlers[fd] == nil then
+      if not self.selector:del(fd) then
+        return unix.get_last_error()
+      end
+    else
+      if not self.selector:mod(fd, unix.SELECTOR_WRITE) then
+        return unix.get_last_error()
+      end
+    end
+    read_handlers[fd] = nil
+    return self
+  elseif event == "write" then
+    local write_handlers = self.write_handlers
+    assert(write_handlers[fd] ~= nil)
+    if self.read_handlers[fd] == nil then
+      if not self.selector:del(fd) then
+        return unix.get_last_error()
+      end
+    else
+      if not self.selector:mod(fd, unix.SELECTOR_READ) then
+        return unix.get_last_error()
+      end
+    end
+    write_handlers[fd] = nil
+    return self
   end
-  local result, message, code = service:remove_handler(handler)
-  if not result then
-    return nil, message, code
-  end
-  return self
 end
 
 function class:dispatch()
-  self.selector_result = nil
-  local result, message, code = self.poller_service:dispatch()
+  local selector = self.selector
+  local result = selector:select(self.selector_timeout)
   if not result then
-    return nil, message, code
-  end
-  local selector_result = self.selector_result
-  if selector_result ~= nil then
-    self.selector_result = nil
-    result, message, code = unpack(selector_result, 1, selector_result.n)
-    if not result then
-      return nil, message, code
+    if unix.get_last_errno() ~= unix.EINTR then
+      return unix.get_last_error()
+    end
+  else
+    local read_handlers = self.read_handlers
+    local write_handlers = self.write_handlers
+    for i = 1, result do
+      local fd, event = selector:event(i)
+      if uint32.band(event, unix.SELECTOR_READ) ~= 0 then
+        read_handlers[fd]:dispatch(self, "read")
+      end
+      if uint32.band(event, unix.SELECTOR_WRITE) ~= 0 then
+        write_handlers[fd]:dispatch(self, "write")
+      end
     end
   end
   return self
