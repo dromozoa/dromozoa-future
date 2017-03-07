@@ -28,11 +28,20 @@ assert(fd2:close())
 
 local ctx = assert(zmq.context())
 
-local socket = assert(ctx:socket(zmq.ZMQ_REP))
-assert(socket:bind("tcp://127.0.0.1:5555"))
+local socket1 = assert(ctx:socket(zmq.ZMQ_REP))
+assert(socket1:bind("tcp://127.0.0.1:5555"))
+local socket2 = assert(ctx:socket(zmq.ZMQ_REP))
+assert(socket2:bind("tcp://127.0.0.1:5556"))
 
-assert(getmetatable(socket).__index == zmq.socket)
-assert(getmetatable(socket) == debug.getregistry()["dromozoa.zmq.socket"])
+assert(getmetatable(socket1).__index == zmq.socket)
+assert(getmetatable(socket1) == debug.getregistry()["dromozoa.zmq.socket"])
+assert(getmetatable(socket2).__index == zmq.socket)
+assert(getmetatable(socket2) == debug.getregistry()["dromozoa.zmq.socket"])
 
-assert(socket:close())
+print(tostring(socket1), tostring(socket2))
+assert(socket1 == socket1)
+assert(socket1 ~= socket2)
+
+assert(socket1:close())
+assert(socket2:close())
 assert(ctx:term())
