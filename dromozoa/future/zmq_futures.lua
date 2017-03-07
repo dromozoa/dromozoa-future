@@ -27,23 +27,31 @@ function class.zmq_recv(service, socket)
     local result, message, code = msg:recv(socket, zmq.ZMQ_DONTWAIT)
     if result then
       return promise:set(msg)
-    elseif code == unix.EAGAIN then
-      local future = service:io_handler(socket, "read", function (promise)
-        while true do
+    elseif code ~= unix.EAGAIN then
+      return promise:set(nil, message, code)
+    end
+    local fd, message, code = socket:getsockopt(zmq.ZMQ_FD)
+    if fd == nil then
+      return promise:set(nil, message, code)
+    end
+    local future = service:io_handler(fd, "read", function (promise)
+      while true do
+        local events, message, code = socket:getsockopt(zmq.ZMQ_EVENTS)
+        if events == nil then
+          return promise:set(nil, message, code)
+        end
+        if uint32.band(events, zmq.ZMQ_POLLIN) ~= 0 then
           local result, message, code = msg:recv(socket, zmq.ZMQ_DONTWAIT)
           if result then
             return promise:set(msg)
-          elseif code == unix.EAGAIN then
-            promise = coroutine.yield()
-          else
+          elseif code ~= unix.EAGAIN then
             return promise:set(nil, message, code)
           end
         end
-      end)
-      return promise:set(future:get())
-    else
-      return promise:set(nil, message, code)
-    end
+        promise = coroutine.yield()
+      end
+    end)
+    return promise:set(future:get())
   end)
 end
 
@@ -60,23 +68,31 @@ function class.zmq_send(service, socket, msg, flags)
     local result, message, code = msg:send(socket, flags)
     if result then
       return promise:set(result)
-    elseif code == unix.EAGAIN then
-      local future = service:io_handler(socket, "write", function (promise)
-        while true do
+    elseif code ~= unix.EAGAIN then
+      return promise:set(nil, message, code)
+    end
+    local fd, message, code = socket:getsockopt(zmq.ZMQ_FD)
+    if fd == nil then
+      return promise:set(nil, message, code)
+    end
+    local future = service:io_handler(fd, "read", function (promise)
+      while true do
+        local events, message, code = socket:getsockopt(zmq.ZMQ_EVENTS)
+        if events == nil then
+          return promise:set(nil, message, code)
+        end
+        if uint32.band(events, zmq.ZMQ_POLLOUT) ~= 0 then
           local result, message, code = msg:send(socket, flags)
           if result then
-            return promise:set(result)
-          elseif code == unix.EAGAIN then
-            promise = coroutine.yield()
-          else
+            return promise:set(msg)
+          elseif code ~= unix.EAGAIN then
             return promise:set(nil, message, code)
           end
         end
-      end)
-      return promise:set(future:get())
-    else
-      return promise:set(nil, message, code)
-    end
+        promise = coroutine.yield()
+      end
+    end)
+    return promise:set(future:get())
   end)
 end
 
