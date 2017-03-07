@@ -26,7 +26,6 @@ local function find_poller_item(self, socket, fd)
       return i, poller_item
     end
   end
-  return nil, nil
 end
 
 local class = {}
@@ -86,7 +85,9 @@ function class:dispatch()
   local poller_items = self.poller_items
   local result, message, code = zmq.poll(poller_items, self.poller_timeout)
   if not result then
-    return result, message, code
+    if code ~= unix.EINTR then
+      return result, message, code
+    end
   else
     for poller_item in poller_items:each() do
       local revents = poller_item.revents
