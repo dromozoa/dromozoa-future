@@ -5,7 +5,7 @@ source = {
   file = "dromozoa-future-1.0.tar.gz";
 }
 description = {
-  summary = "Toolkit for network and I/O programming";
+  summary = "Toolkit for non-blocking I/O programming";
   license = "GPL-3";
   homepage = "https://github.com/dromozoa/dromozoa-future/";
   maintainer = "Tomoyuki Fujimori <moyu@dromozoa.com>";
