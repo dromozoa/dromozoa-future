@@ -1,3 +1,3 @@
 # dromozoa-future
 
-Toolkit for network and I/O programming.
+Toolkit for non-blocking I/O programming.
