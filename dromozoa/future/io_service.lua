@@ -120,6 +120,11 @@ function class:dispatch()
   return self
 end
 
+function class:get_handlers(fd)
+  local fd = unix.fd.get(fd)
+  return self.read_handlers[fd], self.write_handlers[fd]
+end
+
 class.metatable = {
   __index = class;
 }
