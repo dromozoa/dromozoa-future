@@ -117,16 +117,18 @@ function class.new()
 
   assert(curl_service:setopt(curl.CURLMOPT_TIMERFUNCTION, function (_, timeout)
     if timeout == -1 then
-      self:remove_timer(self.curl_timer)
-      self.curl_timer = nil
+      self:remove_timer(self.curl_timer_handle)
+      self.curl_timer_handle = nil
     elseif timeout == 0 then
       assert(self.curl_service:socket_action(curl.CURL_SOCKET_TIMEOUT))
     else
       local b = timeout % 1000
       local a = (timeout - b) / 1000
-      self.curl_timer = self:add_timer(self:get_current_time():add({ tv_sec = a, tv_nsec = b * 1000000 }), function (timer_handle)
+      self.curl_timer_handle = self:add_timer(self:get_current_time():add({ tv_sec = a, tv_nsec = b * 1000000 }), function (timer_handle)
         self:remove_timer(timer_handle)
-        -- self.curl_timer = nil
+        if self.curl_timer_handle == timer_handle then
+          self.curl_timer_handle = nil
+        end
         assert(self.curl_service:socket_action(curl.CURL_SOCKET_TIMEOUT))
       end)
     end
