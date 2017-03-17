@@ -15,11 +15,12 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
+local sequence = require "dromozoa.commons.sequence"
 local curl = require "dromozoa.curl"
 local io_handler = require "dromozoa.future.io_handler"
 local resume_thread = require "dromozoa.future.resume_thread"
 
-local function make_io_handler(multi, fd, event, what)
+local function make_curl_io_handler(multi, fd, event, what)
   return io_handler(fd, event, function ()
     while true do
       assert(multi:socket_action(fd, what))
@@ -28,43 +29,43 @@ local function make_io_handler(multi, fd, event, what)
   end)
 end
 
-local function initialize_socket_function(service, multi)
+local function prepare_socket_function(_, multi, service)
   return multi:setopt(curl.CURLMOPT_SOCKETFUNCTION, function (_, fd, what)
     local read_handler, write_handler = service:get_handlers(fd)
     if what == curl.CURL_POLL_IN then
       if read_handler == nil then
-        service:add_handler(make_io_handler(multi, fd, "read", curl.CURL_POLL_IN))
+        assert(service:add_handler(make_curl_io_handler(multi, fd, "read", curl.CURL_POLL_IN)))
       end
       if write_handler ~= nil then
-        service:remove_handler(write_handler)
+        assert(service:remove_handler(write_handler))
       end
     elseif what == curl.CURL_POLL_OUT then
       if write_handler == nil then
-        service:add_handler(make_io_handler(multi, fd, "write", curl.CURL_POLL_OUT))
+        assert(service:add_handler(make_curl_io_handler(multi, fd, "write", curl.CURL_POLL_OUT)))
       end
       if read_handler ~= nil then
-        service:remove_handler(read_handler)
+        assert(service:remove_handler(read_handler))
       end
     elseif what == curl.CURL_POLL_INOUT then
       if read_handler == nil then
-        service:add_handler(make_io_handler(multi, fd, "read", curl.CURL_POLL_IN))
+        assert(service:add_handler(make_curl_io_handler(multi, fd, "read", curl.CURL_POLL_IN)))
       end
       if write_handler == nil then
-        service:add_handler(make_io_handler(multi, fd, "write", curl.CURL_POLL_OUT))
+        assert(service:add_handler(make_curl_io_handler(multi, fd, "write", curl.CURL_POLL_OUT)))
       end
     elseif what == curl.CURL_POLL_REMOVE then
       if read_handler ~= nil then
-        service:remove_handler(read_handler)
+        assert(service:remove_handler(read_handler))
       end
       if write_handler ~= nil then
-        service:remove_handler(write_handler)
+        assert(service:remove_handler(write_handler))
       end
     end
   end)
 end
 
-local function initialize_timer_function(service, multi, self)
-  multi:setopt(curl.CURLMOPT_TIMERFUNCTION, function (_, timeout_ms)
+local function prepare_timer_function(self, multi, service)
+  return multi:setopt(curl.CURLMOPT_TIMERFUNCTION, function (_, timeout_ms)
     if timeout_ms == -1 then
       local timer_handle = self.timer_handle
       self.timer_handle = nil
@@ -96,8 +97,14 @@ function class.new(service)
     multi = multi;
     threads = {};
   }
-  initialize_socket_function(service, multi)
-  initialize_timer_function(service, multi, self)
+  local result, message = prepare_socket_function(self, multi, service)
+  if not result then
+    return nil, message
+  end
+  local result, message = prepare_timer_function(self, multi, service)
+  if not result then
+    return nil, message
+  end
   return self
 end
 
@@ -114,13 +121,13 @@ function class:dispatch()
   local multi = self.multi
   local threads = self.threads
   while true do
-    local info, n = multi:info_read()
+    local info = multi:info_read()
     if info == nil then
-      break
+      return self
     end
     if info.msg == curl.CURLMSG_DONE then
       local easy = info.easy_handle
-      multi:remove_handle(easy)
+      assert(multi:remove_handle(easy))
       local address = easy:get_address()
       local thread = threads[address]
       threads[address] = nil
@@ -137,6 +144,10 @@ class.metatable = {
 
 return setmetatable(class, {
   __call = function (_, service)
-    return setmetatable(class.new(service), class.metatable)
+    local self, message = class.new(service)
+    if self == nil then
+      return nil, message
+    end
+    return setmetatable(self, class.metatable)
   end;
 })

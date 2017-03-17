@@ -15,7 +15,6 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
 local create_thread = require "dromozoa.future.create_thread"
 local curl_service = require "dromozoa.future.curl_service"
@@ -25,20 +24,8 @@ local io_service = require "dromozoa.future.io_service"
 local resume_thread = require "dromozoa.future.resume_thread"
 local timer_service = require "dromozoa.future.timer_service"
 
-local super = futures
-local class = {}
-
-function class.new()
-  local async_service = assert(unix.async_service())
-
-  local self = {
-    timer_service = timer_service();
-    io_service = io_service();
-    async_service = async_service;
-    async_threads = {};
-  }
-
-  assert(class.add_handler(self, io_handler(async_service:get(), "read", function ()
+local function make_async_io_handler(self, async_service)
+  return io_handler(async_service:get(), "read", function ()
     while true do
       local result = async_service:read()
       if result > 0 then
@@ -57,10 +44,44 @@ function class.new()
       end
       coroutine.yield()
     end
-  end)))
+  end)
+end
 
-  self.curl_service = curl_service(self)
+local function prepare_async_service(self)
+  if self.async_service == nil then
+    local async_service, message = unix.async_service()
+    if async_service == nil then
+      return nil, message
+    end
+    local result, message = self:add_handler(make_async_io_handler(self, async_service))
+    if not result then
+      return nil, message
+    end
+    self.async_service = async_service
+    self.async_threads = {}
+  end
+  return self
+end
 
+local function prepare_curl_service(self)
+  if self.curl_service == nil then
+    local curl_service, message = curl_service(self)
+    if curl_service == nil then
+      return nil, message
+    end
+    self.curl_service = curl_service
+  end
+  return self
+end
+
+local super = futures
+local class = {}
+
+function class.new()
+  local self = {
+    timer_service = timer_service();
+    io_service = io_service();
+  }
   return self
 end
 
@@ -98,13 +119,24 @@ function class:get_handlers(fd)
 end
 
 function class:add_task(task, thread)
+  local result, message = prepare_async_service(self)
+  if not result then
+    return nil, message
+  end
   self.async_service:push(task)
   self.async_threads[task] = thread
   return self
 end
 
 function class:add_curl(easy, thread)
-  self.curl_service:add_handle(easy, thread)
+  local result, message = prepare_curl_service(self)
+  if not result then
+    return nil, message
+  end
+  local result, message = self.curl_service:add_handle(easy, thread)
+  if not result then
+    return nil, message
+  end
   return self
 end
 
@@ -127,19 +159,24 @@ function class:dispatch(thread)
   end
   local timer_service = self.timer_service
   local io_service = self.io_service
-  local curl_service = self.curl_service
   while true do
     timer_service:dispatch()
     if self.stopped then
       return self
     end
-    io_service:dispatch()
+    local result, message = io_service:dispatch()
+    if not result then
+      return nil, message
+    end
     if self.stopped then
       return self
     end
-    curl_service:dispatch()
-    if self.stopped then
-      return self
+    local curl_service = self.curl_service
+    if curl_service ~= nil then
+      curl_service:dispatch()
+      if self.stopped then
+        return self
+      end
     end
   end
 end
