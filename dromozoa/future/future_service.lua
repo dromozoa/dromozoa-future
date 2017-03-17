@@ -17,8 +17,8 @@
 
 local uint32 = require "dromozoa.commons.uint32"
 local unix = require "dromozoa.unix"
-local curl = require "dromozoa.curl"
 local create_thread = require "dromozoa.future.create_thread"
+local curl_service = require "dromozoa.future.curl_service"
 local futures = require "dromozoa.future.futures"
 local io_handler = require "dromozoa.future.io_handler"
 local io_service = require "dromozoa.future.io_service"
@@ -30,15 +30,12 @@ local class = {}
 
 function class.new()
   local async_service = assert(unix.async_service())
-  local curl_service = assert(curl.multi())
 
   local self = {
     timer_service = timer_service();
     io_service = io_service();
     async_service = async_service;
     async_threads = {};
-    curl_service = curl_service;
-    curl_threads = {};
   }
 
   assert(class.add_handler(self, io_handler(async_service:get(), "read", function ()
@@ -62,77 +59,7 @@ function class.new()
     end
   end)))
 
-  assert(curl_service:setopt(curl.CURLMOPT_SOCKETFUNCTION, function (_, fd, what)
-    local read_handler, write_handler = self:get_handlers(fd)
-    if what == curl.CURL_POLL_IN then
-      if read_handler == nil then
-        self:add_handler(io_handler(fd, "read", function ()
-          while true do
-            assert(curl_service:socket_action(fd, curl.CURL_POLL_IN))
-            coroutine.yield()
-          end
-        end))
-      end
-      if write_handler ~= nil then
-        self:remove_handler(write_handler)
-      end
-    elseif what == curl.CURL_POLL_OUT then
-      if write_handler == nil then
-        self:add_handler(io_handler(fd, "write", function ()
-          while true do
-            assert(curl_service:socket_action(fd, curl.CURL_POLL_OUT))
-            coroutine.yield()
-          end
-        end))
-      end
-      if read_handler ~= nil then
-        self:remove_handler(read_handler)
-      end
-    elseif what == curl.CURL_POLL_INOUT then
-      if read_handler == nil then
-        self:add_handler(io_handler(fd, "read", function ()
-          while true do
-            assert(curl_service:socket_action(fd, curl.CURL_POLL_IN))
-            coroutine.yield()
-          end
-        end))
-      end
-      if write_handler == nil then
-        self:add_handler(io_handler(fd, "write", function ()
-          while true do
-            assert(curl_service:socket_action(fd, curl.CURL_POLL_OUT))
-            coroutine.yield()
-          end
-        end))
-      end
-    elseif what == curl.CURL_POLL_REMOVE then
-      if read_handler ~= nil then
-        self:remove_handler(read_handler)
-      end
-      if write_handler ~= nil then
-        self:remove_handler(write_handler)
-      end
-    end
-  end))
-
-  assert(curl_service:setopt(curl.CURLMOPT_TIMERFUNCTION, function (_, timeout)
-    if timeout == -1 then
-      self:remove_timer(self.curl_timer_handle)
-      self.curl_timer_handle = nil
-    elseif timeout == 0 then
-      assert(self.curl_service:socket_action(curl.CURL_SOCKET_TIMEOUT))
-    else
-      local b = timeout % 1000
-      local a = (timeout - b) / 1000
-      self.curl_timer_handle = self:add_timer(self:get_current_time():add({ tv_sec = a, tv_nsec = b * 1000000 }), function (timer_handle)
-        self:remove_timer(timer_handle)
-        if self.curl_timer_handle == timer_handle then
-          self.curl_timer_handle = nil
-        end
-        assert(self.curl_service:socket_action(curl.CURL_SOCKET_TIMEOUT))
-      end)
-    end
-  end))
+  self.curl_service = curl_service(self)
 
   return self
 end
@@ -177,11 +104,7 @@ function class:add_task(task, thread)
 end
 
 function class:add_curl(easy, thread)
-  local result, message = self.curl_service:add_handle(easy)
-  if not result then
-    return nil, message
-  end
-  self.curl_threads[easy:get_address()] = thread
+  self.curl_service:add_handle(easy, thread)
   return self
 end
 
@@ -214,22 +137,7 @@ function class:dispatch(thread)
     if self.stopped then
       return self
     end
-    while true do
-      local info, n = curl_service:info_read()
-      if info == nil then
-        break
-      end
-      if info.msg == curl.CURLMSG_DONE then
-        local easy = info.easy_handle
-        local address = easy:get_address()
-        local thread = self.curl_threads[easy:get_address()]
-        self.curl_service:remove_handle(easy)
-        self.curl_threads[address] = nil
-        if thread then
-          resume_thread(thread, easy, info.result)
-        end
-      end
-    end
+    curl_service:dispatch()
     if self.stopped then
       return self
     end

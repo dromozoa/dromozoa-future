@@ -24,6 +24,7 @@ build = {
     ["dromozoa.future.async_state"] = "dromozoa/future/async_state.lua";
     ["dromozoa.future.create_thread"] = "dromozoa/future/create_thread.lua";
     ["dromozoa.future.curl_futures"] = "dromozoa/future/curl_futures.lua";
+    ["dromozoa.future.curl_service"] = "dromozoa/future/curl_service.lua";
     ["dromozoa.future.curl_state"] = "dromozoa/future/curl_state.lua";
     ["dromozoa.future.deferred_state"] = "dromozoa/future/deferred_state.lua";
     ["dromozoa.future.future"] = "dromozoa/future/future.lua";
