@@ -34,6 +34,7 @@ assert(future_service():dispatch(function (service)
   local f4 = service:curl_perform(easy4)
   local t1 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   service:when_all(f1, f2, f3, f4):get()
+  -- assert(f1:get())
   local t2 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   local t = t2 - t1
   print(t:tostring())

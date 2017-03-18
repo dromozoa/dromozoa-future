@@ -15,10 +15,8 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local sequence = require "dromozoa.commons.sequence"
 local curl = require "dromozoa.curl"
 local io_handler = require "dromozoa.future.io_handler"
-local resume_thread = require "dromozoa.future.resume_thread"
 
 local function make_curl_io_handler(multi, fd, event, what)
   return io_handler(fd, event, function ()
@@ -95,7 +93,7 @@ function class.new(service)
   local multi = curl.multi()
   local self = {
     multi = multi;
-    threads = {};
+    handlers = {};
   }
   local result, message = prepare_socket_function(self, multi, service)
   if not result then
@@ -108,32 +106,36 @@ function class.new(service)
   return self
 end
 
-function class:add_handle(easy, thread)
+function class:add_handler(handler)
+  local easy = handler.easy
   local result, message = self.multi:add_handle(easy)
   if not result then
     return nil, message
   end
-  self.threads[easy:get_address()] = thread
+  self.handlers[easy:get_address()] = handler
+  return self
+end
+
+function class:remove_handler(handler)
+  local easy = handler.easy
+  local result, message = self.multi:remove_handle(easy)
+  if not result then
+    return nil, message
+  end
+  self.handlers[easy:get_address()] = nil
   return self
 end
 
 function class:dispatch()
   local multi = self.multi
-  local threads = self.threads
+  local handlers = self.handlers
   while true do
     local info = multi:info_read()
     if info == nil then
       return self
     end
     if info.msg == curl.CURLMSG_DONE then
-      local easy = info.easy_handle
-      assert(multi:remove_handle(easy))
-      local address = easy:get_address()
-      local thread = threads[address]
-      threads[address] = nil
-      if thread ~= nil then
-        resume_thread(thread, easy, info.result)
-      end
+      handlers[info.easy_handle:get_address()]:dispatch("done", info.result)
     end
   end
 end

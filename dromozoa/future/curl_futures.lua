@@ -15,13 +15,13 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local curl_state = require "dromozoa.future.curl_state"
+local curl_handler_state = require "dromozoa.future.curl_handler_state"
 local future = require "dromozoa.future.future"
 
 local class = {}
 
 function class.curl_perform(service, easy)
-  return future(curl_state(service, easy))
+  return future(curl_handler_state(service, easy))
 end
 
 return class

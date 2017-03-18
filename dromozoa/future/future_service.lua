@@ -128,12 +128,20 @@ function class:add_task(task, thread)
   return self
 end
 
-function class:add_curl(easy, thread)
+function class:add_curl_handler(handler)
   local result, message = prepare_curl_service(self)
   if not result then
     return nil, message
   end
-  local result, message = self.curl_service:add_handle(easy, thread)
+  local result, message = self.curl_service:add_handler(handler)
+  if not result then
+    return nil, message
+  end
+  return self
+end
+
+function class:remove_curl_handler(handler)
+  local result, message = self.curl_service:remove_handler(handler)
   if not result then
     return nil, message
   end

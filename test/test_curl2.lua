@@ -21,6 +21,8 @@ local curl = require "dromozoa.curl"
 local future_service = require "dromozoa.future.future_service"
 local reader_buffer = require "dromozoa.future.reader_buffer"
 
+os.exit()
+
 assert(future_service():dispatch(function (service)
   local easy = assert(curl.easy())
   assert(easy:setopt(curl.CURLOPT_URL, "http://dromozoa.s3.amazonaws.com/pub/dromozoa-autotoolize/1.2/lua-5.3.4.dromozoa-autotoolize-1.2.tar.gz"))

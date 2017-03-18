@@ -17,6 +17,8 @@
 
 local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
+local curl_handler = require "dromozoa.future.curl_handler"
+local promise = require "dromozoa.future.promise"
 local state = require "dromozoa.future.state"
 
 local super = state
@@ -24,31 +26,50 @@ local class = {}
 
 function class.new(service, easy)
   local self = super.new(service)
+
+  local handler, message = curl_handler(easy, coroutine.create(function (event, data)
+    local promise = promise(self)
+    while true do
+      if event == "header" then
+        print("header", data:gsub("\r\n$", ""))
+      elseif event == "write" then
+        print("write", #data, data)
+      elseif event == "done" then
+        promise:set(data)
+        return
+      end
+      event, data = coroutine.yield()
+    end
+  end))
+  if handler == nil then
+    return handler, message
+  end
+
   self.easy = easy
+  self.handler = handler
   return self
 end
 
 function class:launch()
   super.launch(self)
-  local easy = self.easy
-  self.easy = nil
-  assert(self.service:add_curl(easy, coroutine.create(function (_, result)
-    if self:is_running() then
-      self:set(easy, result)
-    else
-      self.easy_result = pack(easy, result)
-    end
-  end)))
+  assert(self.service:add_curl_handler(self.handler))
 end
 
 function class:resume()
   super.resume(self)
-  local easy_result = self.easy_result
-  self.easy_result = nil
-  if easy_result then
-    assert(self.caller == nil)
-    self:set(unpack(easy_result, 1, easy_result.n))
-  end
+  assert(self.service:remove_curl_handler(self.handler))
+end
+
+function class:resume()
+  super.resume(self)
+  assert(self.service:add_curl_handler(self.handler))
+end
+
+function class:finish()
+  super.finish(self)
+  local handler = self.handler
+  self.handler = nil
+  assert(self.service:remove_curl_handler(handler))
 end
 
 class.metatable = {
