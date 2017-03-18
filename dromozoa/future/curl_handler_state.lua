@@ -31,11 +31,16 @@ function class.new(service, easy)
     local promise = promise(self)
     while true do
       if event == "header" then
-        print("header", data:gsub("\r\n$", ""))
+        print("header", (data:gsub("\r\n$", "")))
       elseif event == "write" then
-        print("write", #data, data)
+        print("write", #data)
+        io.write(data)
       elseif event == "done" then
-        promise:set(data)
+        if self:is_running() then
+          self:set(data)
+        else
+          self.curl_result = pack(data)
+        end
         return
       end
       event, data = coroutine.yield()
@@ -55,14 +60,19 @@ function class:launch()
   assert(self.service:add_curl_handler(self.handler))
 end
 
-function class:resume()
-  super.resume(self)
-  assert(self.service:remove_curl_handler(self.handler))
-end
+-- function class:suspend()
+--   super.suspend(self)
+--   assert(self.service:remove_curl_handler(self.handler))
+-- end
 
 function class:resume()
   super.resume(self)
-  assert(self.service:add_curl_handler(self.handler))
+  local curl_result = self.curl_result
+  self.curl_result = nil
+  if curl_result then
+    assert(self.caller == nil)
+    self:set(unpack(curl_result, 1, curl_result.n))
+  end
 end
 
 function class:finish()
