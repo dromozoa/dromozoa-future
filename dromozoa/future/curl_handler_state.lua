@@ -19,6 +19,7 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local curl_handler = require "dromozoa.future.curl_handler"
 local promise = require "dromozoa.future.promise"
+local reader_buffer = require "dromozoa.future.reader_buffer"
 local state = require "dromozoa.future.state"
 
 local super = state
@@ -27,15 +28,21 @@ local class = {}
 function class.new(service, easy)
   local self = super.new(service)
 
+  local header_buffer = reader_buffer()
+  local buffer = reader_buffer()
+
   local handler, message = curl_handler(easy, coroutine.create(function (event, data)
     local promise = promise(self)
     while true do
       if event == "header" then
-        print("header", (data:gsub("\r\n$", "")))
+        header_buffer:write(data)
+        if data == "\r\n" then
+          header_buffer:close()
+        end
       elseif event == "write" then
-        print("write", #data)
-        io.write(data)
+        buffer:write(data)
       elseif event == "done" then
+        buffer:close()
         if self:is_running() then
           self:set(data)
         else
@@ -51,6 +58,8 @@ function class.new(service, easy)
   end
 
   self.easy = easy
+  self.header_buffer = header_buffer
+  self.buffer = buffer
   self.handler = handler
   return self
 end
@@ -59,11 +68,6 @@ function class:launch()
   super.launch(self)
   assert(self.service:add_curl_handler(self.handler))
 end
-
--- function class:suspend()
---   super.suspend(self)
---   assert(self.service:remove_curl_handler(self.handler))
--- end
 
 function class:resume()
   super.resume(self)
