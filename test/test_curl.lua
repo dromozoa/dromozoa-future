@@ -28,12 +28,36 @@ assert(future_service():dispatch(function (service)
   assert(easy3:setopt(curl.CURLOPT_URL, "http://localhost/cgi-bin/nph-dromozoa-curl-test.cgi?command=sleep&sleep_duration=0.1&sleep_count=10"))
   local easy4 = assert(curl.easy())
   assert(easy4:setopt(curl.CURLOPT_URL, "http://localhost/cgi-bin/nph-dromozoa-curl-test.cgi?command=sleep&sleep_duration=0.1&sleep_count=10"))
-  local f1 = service:curl_perform(easy1)
-  local f2 = service:curl_perform(easy2)
+  local f1, reader1, header1 = service:curl_perform(easy1)
+  local f2, reader2, header2 = service:curl_perform(easy2)
   local f3 = service:curl_perform(easy3)
   local f4 = service:curl_perform(easy4)
+
+  local f5 = service:deferred(function (promise)
+    while true do
+      local data = header1:read(16):get()
+      if data == "" then
+        break
+      end
+      print(("%q"):format(data))
+    end
+    promise:set(true)
+  end)
+
+  local f6 = service:deferred(function (promise)
+    while true do
+      local data = reader2:read(16):get()
+      if data == "" then
+        break
+      end
+      print(("%q"):format(data))
+    end
+    promise:set(true)
+  end)
+
   local t1 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
-  service:when_all(f1, f2, f3, f4):wait_for(0.5)
+  -- service:when_all(f1, f2, f3, f4, f5, f6):wait_for(0.5)
+  service:when_all(f1, f2, f3, f4, f5):wait_for(0.5)
   local t2 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   local t = t2 - t1
   print("!!! 1", tostring(t2 - t1))
