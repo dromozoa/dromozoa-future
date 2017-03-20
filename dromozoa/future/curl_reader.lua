@@ -15,6 +15,8 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
+local curl_reader_state = require "dromozoa.future.curl_reader_state"
+local future = require "dromozoa.future.future"
 local reader_buffer = require "dromozoa.future.reader_buffer"
 local resume_thread = require "dromozoa.future.resume_thread"
 
@@ -36,6 +38,7 @@ class.metatable = {
 function class:write(data)
   self.buffer:write(data)
   local thread = self.thread
+  self.thread = nil
   if thread ~= nil then
     resume_thread(thread)
   end
@@ -44,6 +47,7 @@ end
 function class:close()
   self.buffer:close()
   local thread = self.thread
+  self.thread = nil
   if thread ~= nil then
     resume_thread(thread)
   end
@@ -58,17 +62,17 @@ function class:read(count)
     if result then
       return promise:set(result)
     end
-    self.thread = coroutine.create(function ()
-      while true do
-        local result = buffer:read(count)
-        if result then
-          self.thread = nil
-          return promise:set(result)
-        end
-        coroutine.yield()
+    while true do
+      local f = future(curl_reader_state(self.service, self))
+      print("!f:get", coroutine.running())
+      f:get()
+      print("!f:get done")
+      local result = buffer:read(count)
+      print("!f:get result", result)
+      if result then
+        return promise:set(result)
       end
-    end)
-    coroutine.yield()
+    end
   end)
 end
 

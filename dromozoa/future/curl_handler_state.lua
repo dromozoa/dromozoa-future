@@ -43,13 +43,14 @@ function class.new(service, easy)
       elseif event == "write" then
         reader:write(data)
       elseif event == "done" then
+        print("done")
         reader:close()
         if self:is_running() then
           self:set(data)
         else
           self.curl_result = pack(data)
         end
-        return
+        -- return
       end
       event, data = coroutine.yield()
     end
