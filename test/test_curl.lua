@@ -56,8 +56,7 @@ assert(future_service():dispatch(function (service)
   end)
 
   local t1 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
-  -- service:when_all(f1, f2, f3, f4, f5, f6):wait_for(0.5)
-  service:when_all(f1, f2, f3, f4, f5):wait_for(0.5)
+  service:when_all(f1, f2, f3, f4, f5, f6):wait_for(0.5)
   local t2 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   local t = t2 - t1
   print("!!! 1", tostring(t2 - t1))

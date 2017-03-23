@@ -63,12 +63,8 @@ function class:read(count)
       return promise:set(result)
     end
     while true do
-      local f = future(curl_reader_state(self.service, self))
-      print("!f:get", coroutine.running())
-      f:get()
-      print("!f:get done")
+      future(curl_reader_state(self.service, self)):get()
       local result = buffer:read(count)
-      print("!f:get result", result)
       if result then
         return promise:set(result)
       end

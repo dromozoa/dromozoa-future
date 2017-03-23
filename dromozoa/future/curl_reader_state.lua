@@ -26,7 +26,6 @@ function class.new(service, reader)
   local self = super.new(service)
   self.reader = reader
   self.thread = coroutine.create(function ()
-    print("!!! thread", self:is_running())
     if self:is_running() then
       self:set(true)
     else
@@ -40,17 +39,13 @@ function class:launch()
   super.launch(self)
   local thread = self.thread
   self.thread = nil
-  print("set-thread", self.reader, thread, self.caller)
   self.reader.thread = thread
 end
 
 function class:resume()
-  print("!!1 resume", result, self.caller, self.status)
   super.resume(self)
-  print("!!2 resume", result, self.caller, self.status)
   local result = self.result
   self.result = nil
-  print("!!3 resume", result, self.caller, self.status)
   if result then
     -- assert(self.caller == nil)
     self:set(true)

@@ -33,7 +33,6 @@ function class.new(service, easy)
   local reader = curl_reader(service, self)
 
   local handler, message = curl_handler(easy, coroutine.create(function (event, data)
-    local promise = promise(self)
     while true do
       if event == "header" then
         header:write(data)
@@ -43,14 +42,13 @@ function class.new(service, easy)
       elseif event == "write" then
         reader:write(data)
       elseif event == "done" then
-        print("done")
         reader:close()
         if self:is_running() then
           self:set(data)
         else
           self.curl_result = pack(data)
         end
-        -- return
+        return
       end
       event, data = coroutine.yield()
     end
