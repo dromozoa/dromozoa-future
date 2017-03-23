@@ -77,37 +77,37 @@ function class:is_ready()
 end
 
 function class:launch()
-  assert(self.waiting_state == nil)
   assert(self:is_initial())
+  assert(self.waiting_state == nil)
   self.status = "running"
 end
 
 function class:suspend()
+  assert(self:is_running())
+  self.status = "suspended"
+  remove_timer(self)
   local waiting_state = self.waiting_state
   if waiting_state ~= nil then
     waiting_state:suspend()
   end
-  assert(self:is_running())
-  self.status = "suspended"
-  remove_timer(self)
 end
 
 function class:resume()
-  local waiting_state = self.waiting_state
-  if waiting_state ~= nil then
-    waiting_state:resume()
-  end
   assert(self:is_suspended())
   self.status = "running"
   local timeout = self.timeout
   if timeout ~= nil then
     self.timer_handle = self.service:add_timer(timeout, self.timer)
   end
+  local waiting_state = self.waiting_state
+  if waiting_state ~= nil then
+    waiting_state:resume()
+  end
 end
 
 function class:finish()
-  assert(self.waiting_state == nil)
   assert(self:is_running())
+  assert(self.waiting_state == nil)
   self.status = "ready"
   remove_timer(self)
 end

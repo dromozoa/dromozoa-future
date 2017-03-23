@@ -22,32 +22,33 @@ local state = require "dromozoa.future.state"
 local super = state
 local class = {}
 
-function class.new(service, task)
+function class.new(service, reader)
   local self = super.new(service)
-  self.task = task
+  self.reader = reader
+  self.thread = coroutine.create(function ()
+    if self:is_running() then
+      self:set(true)
+    else
+      self.result = pack(true)
+    end
+  end)
   return self
 end
 
 function class:launch()
   super.launch(self)
-  local task = self.task
-  self.task = nil
-  assert(self.service:add_task(task, coroutine.create(function (task)
-    if self:is_running() then
-      self:set(task:result())
-    else
-      self.task_result = pack(task:result())
-    end
-  end)))
+  local thread = self.thread
+  self.thread = nil
+  self.reader.thread = thread
 end
 
 function class:resume()
   super.resume(self)
-  local task_result = self.task_result
-  self.task_result = nil
-  if task_result then
-    assert(self.caller == nil)
-    self:set(unpack(task_result, 1, task_result.n))
+  local result = self.result
+  self.result = nil
+  if result then
+    -- assert(self.caller == nil)
+    self:set(true)
   end
 end
 
@@ -57,7 +58,7 @@ class.metatable = {
 
 return setmetatable(class, {
   __index = super;
-  __call = function (_, service, task)
-    return setmetatable(class.new(service, task), class.metatable)
+  __call = function (_, service, reader)
+    return setmetatable(class.new(service, reader), class.metatable)
   end;
 })

@@ -29,41 +29,18 @@ if not symbol or symbol:is_null() then
   dyld.dlopen("libpthread.so.0", uint32.bor(dyld.RTLD_LAZY, dyld.RTLD_GLOBAL))
 end
 
-local function check_registry(check)
-  local task
-  for k, v in pairs(debug.getregistry()) do
-    if type(k) == "userdata" and type(v) == "userdata" then
-      task = v
-    end
-  end
-  print("check_registry", check, task)
-  if check then
-    assert(task)
-  else
-    assert(not task)
-  end
-end
-
 local service = future_service()
 
 assert(service:dispatch(function (service)
   local f = service:nanosleep(1.5)
-  check_registry(false)
   f:wait_for(0.5)
-  check_registry(true)
   f:wait_for(0.5)
-  check_registry(true)
   assert(f:get())
-  check_registry(false)
 
   local f = service:nanosleep(1.5)
-  check_registry(false)
   f:wait_for(0.5)
-  check_registry(true)
   unix.nanosleep(1)
-  check_registry(true)
   assert(f:get())
-  check_registry(false)
 
   local f1 = service:getaddrinfo("github.com", "https")
   local f2 = service:getaddrinfo("luarocks.org", "https")

@@ -15,40 +15,31 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local pack = require "dromozoa.commons.pack"
-local unpack = require "dromozoa.commons.unpack"
-local state = require "dromozoa.future.state"
+local curl = require "dromozoa.curl"
+local create_thread = require "dromozoa.future.create_thread"
+local resume_thread = require "dromozoa.future.resume_thread"
 
-local super = state
 local class = {}
 
-function class.new(service, task)
-  local self = super.new(service)
-  self.task = task
+function class.new(easy, thread)
+  local self = {
+    easy = easy;
+    thread = create_thread(thread)
+  }
+  local result, message = easy:setopt(curl.CURLOPT_HEADERFUNCTION, function (data)
+    self:dispatch("header", data)
+  end)
+  if not result then
+    return nil, message
+  end
+  local result, message = easy:setopt(curl.CURLOPT_WRITEFUNCTION, function (data)
+    self:dispatch("write", data)
+  end)
   return self
 end
 
-function class:launch()
-  super.launch(self)
-  local task = self.task
-  self.task = nil
-  assert(self.service:add_task(task, coroutine.create(function (task)
-    if self:is_running() then
-      self:set(task:result())
-    else
-      self.task_result = pack(task:result())
-    end
-  end)))
-end
-
-function class:resume()
-  super.resume(self)
-  local task_result = self.task_result
-  self.task_result = nil
-  if task_result then
-    assert(self.caller == nil)
-    self:set(unpack(task_result, 1, task_result.n))
-  end
+function class:dispatch(event, data)
+  resume_thread(self.thread, event, data)
 end
 
 class.metatable = {
@@ -56,8 +47,11 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __index = super;
-  __call = function (_, service, task)
-    return setmetatable(class.new(service, task), class.metatable)
+  __call = function (_, easy, thread)
+    local self, message = class.new(easy, thread)
+    if self == nil then
+      return nil, message
+    end
+    return setmetatable(self, class.metatable)
   end;
 })
