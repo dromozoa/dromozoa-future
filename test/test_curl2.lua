@@ -21,47 +21,37 @@ local curl = require "dromozoa.curl"
 local future_service = require "dromozoa.future.future_service"
 local reader_buffer = require "dromozoa.future.reader_buffer"
 
-os.exit()
-
 assert(future_service():dispatch(function (service)
   local easy = assert(curl.easy())
   assert(easy:setopt(curl.CURLOPT_URL, "http://dromozoa.s3.amazonaws.com/pub/dromozoa-autotoolize/1.2/lua-5.3.4.dromozoa-autotoolize-1.2.tar.gz"))
-  local size = 0
-  assert(easy:setopt(curl.CURLOPT_HEADERFUNCTION, function (data)
-    local data = data:gsub("\r\n$", "")
-    print(data)
-  end))
+  local f, reader, header = service:curl_perform(easy)
 
-  local ctx = sha256()
-
-  local thread = coroutine.create(function (buffer)
-    while true do
-      local result = buffer:read(256)
-      if result == nil then
-        buffer = coroutine.yield()
-      elseif result == "" then
-        break
-      else
-        ctx:update(result)
-      end
-    end
+  local f1 = service:deferred(function (promise)
+    print("fetching")
+    f:get()
+    print("fetched")
+    return promise:set(true)
   end)
 
-  local buffer = reader_buffer()
-  assert(easy:setopt(curl.CURLOPT_WRITEFUNCTION, function (data)
-    size = size + #data
-    buffer:write(data)
-    coroutine.resume(thread, buffer)
-  end))
-  local f = service:curl_perform(easy)
-  print("fetching")
-  assert(f:get())
-  print("fetched")
-  assert(size == 648960)
-  buffer:close()
-  coroutine.resume(thread, buffer)
+  local f2 = service:deferred(function (promise)
+    print("checking")
+    local ctx = sha256()
+    local size = 0
+    while true do
+      local result = assert(reader:read(256):get())
+      if result == "" then
+        break
+      end
+      ctx:update(result)
+      size = size + #result
+    end
+    assert(size == 648960)
+    assert(ctx:finalize("hex") == "9f6ca3818625f90f06f28cd9fc758017b8a09ead724b223fda2f3120810ff68c")
+    print("checked")
+    return promise:set(true)
+  end)
 
-  assert(ctx:finalize("hex") == "9f6ca3818625f90f06f28cd9fc758017b8a09ead724b223fda2f3120810ff68c")
+  service:when_all(f1, f2):get()
 
   easy:cleanup()
   service:stop()
