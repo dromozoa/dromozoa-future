@@ -32,7 +32,7 @@ function class.new(service, easy)
   local header = curl_reader(service, self)
   local reader = curl_reader(service, self)
 
-  local handler, message = curl_handler(easy, coroutine.create(function (event, data)
+  local handler, message = curl_handler(easy, coroutine.create(function (_, event, data)
     while true do
       if event == "header" then
         header:write(data)
@@ -50,7 +50,7 @@ function class.new(service, easy)
         end
         return
       end
-      event, data = coroutine.yield()
+      _, event, data = coroutine.yield()
     end
   end))
   if handler == nil then

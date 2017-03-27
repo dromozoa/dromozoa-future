@@ -39,7 +39,7 @@ function class.new(easy, thread)
 end
 
 function class:dispatch(event, data)
-  resume_thread(self.thread, event, data)
+  resume_thread(self.thread, self, event, data)
 end
 
 class.metatable = {
