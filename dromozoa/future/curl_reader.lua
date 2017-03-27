@@ -57,7 +57,6 @@ function class:read(count)
   return self.service:deferred(function (promise)
     local event = self.event
     local buffer = self.buffer
-
     local result = buffer:read(count)
     if result then
       return promise:set(result)
