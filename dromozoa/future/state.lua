@@ -51,6 +51,13 @@ local function resume_caller(self, status)
   end
 end
 
+local function set_ready(self)
+  self:finish()
+  destruct_timer(self)
+  pop_state(self)
+  resume_caller(self, "ready")
+end
+
 local class = {}
 
 function class.new(service)
@@ -112,21 +119,14 @@ function class:finish()
   remove_timer(self)
 end
 
-function class:set_ready()
-  self:finish()
-  destruct_timer(self)
-  pop_state(self)
-  resume_caller(self, "ready")
-end
-
 function class:set(...)
   self.value = pack(...)
-  self:set_ready()
+  set_ready(self)
 end
 
 function class:error(message)
   self.value = pack(nil, debug.traceback(message))
-  self:set_ready()
+  set_ready(self)
   error(never_return, 0)
 end
 
@@ -139,7 +139,7 @@ function class:assert(...)
       message = "assertion failed!"
     end
     self.value = pack(nil, debug.traceback(message))
-    self:set_ready()
+    set_ready(self)
     error(never_return, 0)
   end
 end

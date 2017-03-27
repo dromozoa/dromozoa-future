@@ -26,17 +26,18 @@ local class = {}
 function class.new(service, thread)
   local self = super.new(service)
   local thread = create_thread(thread)
-  self.deferred = coroutine.create(function ()
-    resume_thread(thread, promise(self))
+  self.thread = coroutine.create(function ()
+    local promise = promise(self)
+    resume_thread(thread, promise)
   end)
   return self
 end
 
 function class:launch()
   super.launch(self)
-  local deferred = self.deferred
-  self.deferred = nil
-  resume_thread(deferred)
+  local thread = self.thread
+  self.thread = nil
+  resume_thread(thread)
 end
 
 class.metatable = {
