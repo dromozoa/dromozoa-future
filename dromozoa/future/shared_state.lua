@@ -19,11 +19,12 @@ local sequence = require "dromozoa.commons.sequence"
 local unpack = require "dromozoa.commons.unpack"
 
 local function propagate(self)
-  assert(self.state:is_ready())
+  local state = self.state
+  assert(state:is_ready())
   for share_state in self.share_states:each() do
     assert(share_state:is_running() or share_state:is_suspended() or share_state:is_ready())
     if share_state:is_running() then
-      share_state:set(unpack(self.state.value, 1, self.state.value.n))
+      share_state:set(unpack(state.value, 1, state.value.n))
     end
   end
 end
@@ -45,28 +46,28 @@ end
 
 function class:launch(share_state)
   self.share_states:push(share_state)
-  local this = self.state
-  if this:is_initial() or this:is_suspended() then
+  local state = self.state
+  if state:is_initial() or state:is_suspended() then
     local service = self.service
     local current_state = service:get_current_state()
     service:set_current_state(nil)
-    if this:dispatch() then
+    if state:dispatch() then
       propagate(self)
     else
-      this.caller = coroutine.create(function ()
+      state.caller = coroutine.create(function ()
         propagate(self)
       end)
     end
     service:set_current_state(current_state)
-  elseif this:is_ready() then
+  elseif state:is_ready() then
     propagate(self)
   end
 end
 
 function class:suspend()
-  local this = self.state
-  assert(this:is_running() or this:is_ready())
-  if this:is_running() then
+  local state = self.state
+  assert(state:is_running() or state:is_ready())
+  if state:is_running() then
     local is_running = false
     for share_state in self.share_states:each() do
       assert(share_state:is_running() or share_state:is_suspended())
@@ -76,17 +77,17 @@ function class:suspend()
       end
     end
     if not is_running then
-      this:suspend()
+      state:suspend()
     end
   end
 end
 
 function class:resume()
-  local this = self.state
-  assert(this:is_running() or this:is_suspended() or this:is_ready())
-  if this:is_suspended() then
-    this:resume()
-  elseif this:is_ready() then
+  local state = self.state
+  assert(state:is_running() or state:is_suspended() or state:is_ready())
+  if state:is_suspended() then
+    state:resume()
+  elseif state:is_ready() then
     propagate(self)
   end
 end
