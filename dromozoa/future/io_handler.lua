@@ -28,8 +28,8 @@ function class.new(fd, event, thread)
   }
 end
 
-function class:dispatch(service, event)
-  resume_thread(self.thread, service, self, event)
+function class:dispatch(event)
+  resume_thread(self.thread, self, event)
 end
 
 class.metatable = {

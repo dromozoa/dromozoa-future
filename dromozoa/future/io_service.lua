@@ -110,10 +110,10 @@ function class:dispatch()
     for i = 1, result do
       local fd, event = selector:event(i)
       if uint32.band(event, unix.SELECTOR_READ) ~= 0 then
-        read_handlers[fd]:dispatch(self, "read")
+        read_handlers[fd]:dispatch("read")
       end
       if uint32.band(event, unix.SELECTOR_WRITE) ~= 0 then
-        write_handlers[fd]:dispatch(self, "write")
+        write_handlers[fd]:dispatch("write")
       end
     end
   end
