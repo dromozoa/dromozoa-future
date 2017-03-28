@@ -30,10 +30,6 @@ function class.new(service, state)
   }
 end
 
-class.metatable = {
-  __index = class;
-}
-
 function class:write(data)
   self.buffer:write(data)
   local thread = self.thread
@@ -68,6 +64,10 @@ function class:read(count)
     end
   end)
 end
+
+class.metatable = {
+  __index = class;
+}
 
 return setmetatable(class, {
   __call = function (_, service, state)

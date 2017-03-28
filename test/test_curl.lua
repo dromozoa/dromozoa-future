@@ -64,7 +64,7 @@ assert(future_service():dispatch(function (service)
   local t3 = unix.clock_gettime(unix.CLOCK_MONOTONIC_RAW)
   local t = t3 - t1
   print("!!! 2", t:tostring())
-  assert(t < 2.5)
+  assert(t:tonumber() < 2.5)
   local c, d = service:when_all(f3, f4):get()
   print(a:get(), b:get(), c:get(), d:get())
   f5:get()

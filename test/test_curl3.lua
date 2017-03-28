@@ -26,32 +26,33 @@ assert(future_service():dispatch(function (service)
   assert(easy:setopt(curl.CURLOPT_URL, "http://dromozoa.s3.amazonaws.com/pub/dromozoa-autotoolize/1.2/lua-5.3.4.dromozoa-autotoolize-1.2.tar.gz"))
   local f, reader, header = service:curl_perform(easy)
 
-  local f1 = service:deferred(function (promise)
-    print("fetching")
-    f:get()
-    print("fetched")
-    return promise:set(true)
-  end)
+  f:wait_for(0.2)
 
-  local f2 = service:deferred(function (promise)
-    print("checking")
-    local ctx = sha256()
-    local size = 0
-    while true do
-      local result = assert(reader:read(256):get())
-      if result == "" then
-        break
-      end
-      ctx:update(result)
-      size = size + #result
+  print("header")
+  while true do
+    local result = assert(header:read(16):get())
+    if result == "" then
+      break
     end
-    assert(size == 648960)
-    assert(ctx:finalize("hex") == "9f6ca3818625f90f06f28cd9fc758017b8a09ead724b223fda2f3120810ff68c")
-    print("checked")
-    return promise:set(true)
-  end)
+  end
+  print("header end")
 
-  service:when_all(f2, f1):get()
+  print("checking")
+  local ctx = sha256()
+  local size = 0
+  while true do
+    local result = assert(reader:read(256):get())
+    if result == "" then
+      break
+    end
+    ctx:update(result)
+    size = size + #result
+  end
+  assert(size == 648960)
+  assert(ctx:finalize("hex") == "9f6ca3818625f90f06f28cd9fc758017b8a09ead724b223fda2f3120810ff68c")
+  print("checked")
+
+  print("f", f:get())
 
   easy:cleanup()
   service:stop()
