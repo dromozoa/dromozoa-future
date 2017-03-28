@@ -51,7 +51,7 @@ function class.new(service, easy)
     end
   end))
   if handler == nil then
-    return handler, message
+    return nil, message
   end
   self.handler = handler
   return self, reader, header
@@ -67,7 +67,6 @@ function class:resume()
   local result = self.result
   self.result = nil
   if result then
-    assert(self.caller == nil)
     self:set(unpack(result, 1, result.n))
   end
 end
