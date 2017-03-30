@@ -25,11 +25,11 @@ local class = {}
 function class.new(service, reader)
   local self = super.new(service)
   self.reader = reader
-  self.thread = coroutine.create(function ()
+  self.thread = coroutine.create(function (event)
     if self:is_running() then
-      self:set(true)
+      self:set(event)
     else
-      self.result = pack(true)
+      self.result = pack(event)
     end
   end)
   return self
@@ -47,8 +47,7 @@ function class:resume()
   local result = self.result
   self.result = nil
   if result then
-    -- assert(self.caller == nil)
-    self:set(true)
+    self:set(unpack(result, 1, result.n))
   end
 end
 

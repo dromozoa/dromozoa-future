@@ -21,8 +21,8 @@ local future = require "dromozoa.future.future"
 local class = {}
 
 function class.curl_perform(service, easy)
-  local state = curl_handler_state(service, easy)
-  return future(state), state.reader, state.header
+  local state, reader, header = curl_handler_state(service, easy)
+  return future(state), reader, header
 end
 
 return class

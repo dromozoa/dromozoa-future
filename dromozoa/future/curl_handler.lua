@@ -24,7 +24,7 @@ local class = {}
 function class.new(easy, thread)
   local self = {
     easy = easy;
-    thread = create_thread(thread)
+    thread = create_thread(thread);
   }
   local result, message = easy:setopt(curl.CURLOPT_HEADERFUNCTION, function (data)
     self:dispatch("header", data)
@@ -35,11 +35,14 @@ function class.new(easy, thread)
   local result, message = easy:setopt(curl.CURLOPT_WRITEFUNCTION, function (data)
     self:dispatch("write", data)
   end)
+  if not result then
+    return nil, message
+  end
   return self
 end
 
 function class:dispatch(event, data)
-  resume_thread(self.thread, event, data)
+  resume_thread(self.thread, self, event, data)
 end
 
 class.metatable = {

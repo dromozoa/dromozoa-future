@@ -19,7 +19,6 @@ local pack = require "dromozoa.commons.pack"
 local unpack = require "dromozoa.commons.unpack"
 local curl_handler = require "dromozoa.future.curl_handler"
 local curl_reader = require "dromozoa.future.curl_reader"
-local promise = require "dromozoa.future.promise"
 local reader_buffer = require "dromozoa.future.reader_buffer"
 local state = require "dromozoa.future.state"
 
@@ -28,11 +27,9 @@ local class = {}
 
 function class.new(service, easy)
   local self = super.new(service)
-
   local header = curl_reader(service, self)
   local reader = curl_reader(service, self)
-
-  local handler, message = curl_handler(easy, coroutine.create(function (event, data)
+  local handler, message = curl_handler(easy, coroutine.create(function (_, event, data)
     while true do
       if event == "header" then
         header:write(data)
@@ -46,36 +43,38 @@ function class.new(service, easy)
         if self:is_running() then
           self:set(data)
         else
-          self.curl_result = pack(data)
+          self.result = pack(data)
         end
         return
       end
-      event, data = coroutine.yield()
+      _, event, data = coroutine.yield()
     end
   end))
   if handler == nil then
-    return handler, message
+    return nil, message
   end
-
-  self.easy = easy
-  self.header = header
-  self.reader = reader
   self.handler = handler
-  return self
+  return self, reader, header
+end
+
+function class:prepare_handler()
+  if not self.prepared then
+    assert(self.service:add_curl_handler(self.handler))
+    self.prepared = true
+  end
 end
 
 function class:launch()
   super.launch(self)
-  assert(self.service:add_curl_handler(self.handler))
+  self:prepare_handler()
 end
 
 function class:resume()
   super.resume(self)
-  local curl_result = self.curl_result
-  self.curl_result = nil
-  if curl_result then
-    assert(self.caller == nil)
-    self:set(unpack(curl_result, 1, curl_result.n))
+  local result = self.result
+  self.result = nil
+  if result then
+    self:set(unpack(result, 1, result.n))
   end
 end
 
@@ -93,6 +92,7 @@ class.metatable = {
 return setmetatable(class, {
   __index = super;
   __call = function (_, service, easy)
-    return setmetatable(class.new(service, easy), class.metatable)
+    local self, reader, header = class.new(service, easy)
+    return setmetatable(self, class.metatable), reader, header
   end;
 })

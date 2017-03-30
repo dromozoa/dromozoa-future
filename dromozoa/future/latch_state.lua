@@ -49,14 +49,14 @@ end
 local function dispatch(self)
   local service = self.service
   local current_state = service:get_current_state()
-  for key, that in each_state(self) do
+  for key, state in each_state(self) do
     service:set_current_state(nil)
-    if that:dispatch() then
+    if state:dispatch() then
       if count_down(self, key) then
         break
       end
     else
-      that.caller = coroutine.create(function ()
+      state.caller = coroutine.create(function ()
         if not count_down(self, key) then
           coroutine.yield()
         end
@@ -67,10 +67,10 @@ local function dispatch(self)
 end
 
 local function suspend(self)
-  for _, that in each_state(self) do
-    if that:is_running() then
-      that:suspend()
-      that.caller = nil
+  for _, state in each_state(self) do
+    if state:is_running() then
+      state:suspend()
+      state.caller = nil
     end
   end
 end

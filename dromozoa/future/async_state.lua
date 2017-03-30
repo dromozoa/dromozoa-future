@@ -36,18 +36,17 @@ function class:launch()
     if self:is_running() then
       self:set(task:result())
     else
-      self.task_result = pack(task:result())
+      self.result = pack(task:result())
     end
   end)))
 end
 
 function class:resume()
   super.resume(self)
-  local task_result = self.task_result
-  self.task_result = nil
-  if task_result then
-    assert(self.caller == nil)
-    self:set(unpack(task_result, 1, task_result.n))
+  local result = self.result
+  self.result = nil
+  if result then
+    self:set(unpack(result, 1, result.n))
   end
 end
 

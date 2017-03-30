@@ -22,25 +22,20 @@ local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 
-function class.new(service, state, event)
+function class.new(service, state)
   return {
     service = service;
     state = state;
-    event = event;
     buffer = reader_buffer();
   }
 end
-
-class.metatable = {
-  __index = class;
-}
 
 function class:write(data)
   self.buffer:write(data)
   local thread = self.thread
   self.thread = nil
   if thread ~= nil then
-    resume_thread(thread)
+    resume_thread(thread, "write")
   end
 end
 
@@ -49,15 +44,13 @@ function class:close()
   local thread = self.thread
   self.thread = nil
   if thread ~= nil then
-    resume_thread(thread)
+    resume_thread(thread, "close")
   end
 end
 
 function class:read(count)
   return self.service:deferred(function (promise)
-    local event = self.event
     local buffer = self.buffer
-
     local result = buffer:read(count)
     if result then
       return promise:set(result)
@@ -72,8 +65,12 @@ function class:read(count)
   end)
 end
 
+class.metatable = {
+  __index = class;
+}
+
 return setmetatable(class, {
-  __call = function (_, service, state, event)
-    return setmetatable(class.new(service, state, event), class.metatable)
+  __call = function (_, service, state)
+    return setmetatable(class.new(service, state), class.metatable)
   end;
 })
