@@ -50,17 +50,49 @@ end
 
 function class:read(count)
   return self.service:deferred(function (promise)
+    self.state:start()
     local buffer = self.buffer
-    local result = buffer:read(count)
-    if result then
-      return promise:set(result)
-    end
     while true do
-      future(curl_reader_state(self.service, self)):get()
       local result = buffer:read(count)
       if result then
         return promise:set(result)
       end
+      future(curl_reader_state(self.service, self)):get()
+    end
+  end)
+end
+
+function class:read_some(count)
+  return self.service:deferred(function (promise)
+    self.state:start()
+    return promise:set(self.buffer:read_some(count))
+  end)
+end
+
+function class:read_any(count)
+  return self.service:deferred(function (promise)
+    self.state:start()
+    local buffer = self.buffer
+    while true do
+      local result = buffer:read_some(count)
+      if result ~= "" or buffer.closed then
+        return promise:set(result)
+      end
+      future(curl_reader_state(self.service, self)):get()
+    end
+  end)
+end
+
+function class:read_until(pattern)
+  return self.service:deferred(function (promise)
+    self.state:start()
+    local buffer = self.buffer
+    while true do
+      local result, capture = buffer:read_until(pattern)
+      if result then
+        return promise:set(result, capture)
+      end
+      future(curl_reader_state(self.service, self)):get()
     end
   end)
 end

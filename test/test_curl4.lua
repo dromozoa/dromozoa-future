@@ -15,43 +15,42 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local sha256 = require "dromozoa.commons.sha256"
+local sequence = require "dromozoa.commons.sequence"
 local unix = require "dromozoa.unix"
 local curl = require "dromozoa.curl"
 local future_service = require "dromozoa.future.future_service"
-local reader_buffer = require "dromozoa.future.reader_buffer"
 
 assert(future_service():dispatch(function (service)
   local easy = assert(curl.easy())
-  assert(easy:setopt(curl.CURLOPT_URL, "http://dromozoa.s3.amazonaws.com/pub/dromozoa-autotoolize/1.2/lua-5.3.4.dromozoa-autotoolize-1.2.tar.gz"))
+  assert(easy:setopt(curl.CURLOPT_URL, "http://localhost/cgi-bin/nph-dromozoa-curl-test.cgi?command=sleep&sleep_duration=0.5&sleep_count=10"))
+
   local f, reader, header = service:curl(easy)
 
-  local f1 = service:deferred(function (promise)
-    print("fetching")
-    f:get()
-    print("fetched")
-    return promise:set(true)
-  end)
+  local result, capture = assert(header:read_until("\r\n(X%-[^:]+):"):get())
+  print(("[%q %q]"):format(result, capture))
+  assert(capture == "X-LWS")
 
-  local f2 = service:deferred(function (promise)
-    print("checking")
-    local ctx = sha256()
-    local size = 0
-    while true do
-      local result = assert(reader:read(256):get())
-      if result == "" then
-        break
-      end
-      ctx:update(result)
-      size = size + #result
+  while true do
+    local result = assert(header:read_any(1024):get())
+    if result == "" then
+      break
     end
-    assert(size == 648960)
-    assert(ctx:finalize("hex") == "9f6ca3818625f90f06f28cd9fc758017b8a09ead724b223fda2f3120810ff68c")
-    print("checked")
-    return promise:set(true)
-  end)
+    print(("%q"):format(result))
+  end
 
-  service:when_all(f2, f1):get()
+  local data = sequence()
+  while true do
+    local result = assert(reader:read_any(1024):get())
+    if result == "" then
+      break
+    end
+    print(("%q"):format(result))
+    data:push(result)
+  end
+
+  assert(f:get() == 0)
+
+  assert(#data == 10)
 
   easy:cleanup()
   service:stop()

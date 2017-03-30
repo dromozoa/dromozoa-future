@@ -57,16 +57,16 @@ function class.new(service, easy)
   return self, reader, header
 end
 
-function class:prepare_handler()
-  if not self.prepared then
+function class:start()
+  if not self.started then
     assert(self.service:add_curl_handler(self.handler))
-    self.prepared = true
+    self.started = true
   end
 end
 
 function class:launch()
   super.launch(self)
-  self:prepare_handler()
+  self:start()
 end
 
 function class:resume()

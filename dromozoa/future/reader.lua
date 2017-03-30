@@ -63,7 +63,7 @@ function class:read_any(count)
     local buffer_size = self.buffer_size
     while true do
       local result = buffer:read_some(count)
-      if result ~= "" or self.buffer.closed then
+      if result ~= "" or buffer.closed then
         return promise:set(result)
       end
       local result, message, code = source:read(buffer_size):get()
