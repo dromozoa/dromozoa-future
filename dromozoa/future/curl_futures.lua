@@ -15,29 +15,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local create_thread = require "dromozoa.future.create_thread"
-local resume_thread = require "dromozoa.future.resume_thread"
+local curl_handler_state = require "dromozoa.future.curl_handler_state"
+local future = require "dromozoa.future.future"
 
 local class = {}
 
-function class.new(fd, event, thread)
-  return {
-    fd = fd;
-    event = event;
-    thread = create_thread(thread);
-  }
+function class.curl(service, easy)
+  local state, reader, header = curl_handler_state(service, easy)
+  return future(state), reader, header
 end
 
-function class:dispatch(event)
-  resume_thread(self.thread, self, event)
-end
-
-class.metatable = {
-  __index = class;
-}
-
-return setmetatable(class, {
-  __call = function (_, fd, event, thread)
-    return setmetatable(class.new(fd, event, thread), class.metatable)
-  end;
-})
+return class

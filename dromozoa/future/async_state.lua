@@ -33,22 +33,20 @@ function class:launch()
   local task = self.task
   self.task = nil
   assert(self.service:add_task(task, coroutine.create(function (task)
-    local task_result = pack(task:result())
     if self:is_running() then
-      self:set(unpack(task_result, 1, task_result.n))
+      self:set(task:result())
     else
-      self.task_result = task_result
+      self.result = pack(task:result())
     end
   end)))
 end
 
 function class:resume()
   super.resume(self)
-  local task_result = self.task_result
-  self.task_result = nil
-  if task_result then
-    assert(self.caller == nil)
-    self:set(unpack(task_result, 1, task_result.n))
+  local result = self.result
+  self.result = nil
+  if result then
+    self:set(unpack(result, 1, result.n))
   end
 end
 

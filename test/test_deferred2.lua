@@ -15,29 +15,35 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local create_thread = require "dromozoa.future.create_thread"
-local resume_thread = require "dromozoa.future.resume_thread"
+local unix = require "dromozoa.unix"
+local future_service = require "dromozoa.future.future_service"
 
-local class = {}
+assert(future_service():dispatch(function (service)
+  local fd1, fd2 = assert(unix.pipe())
+  assert(fd1:ndelay_on())
+  assert(fd2:ndelay_on())
 
-function class.new(fd, event, thread)
-  return {
-    fd = fd;
-    event = event;
-    thread = create_thread(thread);
-  }
-end
+  local f = service:deferred(function (promise)
+    local f = service:deferred(function (promise)
+      local f = service:deferred(function (promise)
+        local f = service:deferred(function (promise)
+          service:read(fd1, 1):get()
+          promise:set(true)
+        end)
+        f:get()
+        promise:set(true)
+      end)
+      f:get()
+      promise:set(true)
+    end)
+    f:get()
+    promise:set(true)
+  end)
 
-function class:dispatch(event)
-  resume_thread(self.thread, self, event)
-end
+  f:wait_for(0.2)
+  f:wait_for(0.2)
+  assert(fd2:close())
+  f:get()
 
-class.metatable = {
-  __index = class;
-}
-
-return setmetatable(class, {
-  __call = function (_, fd, event, thread)
-    return setmetatable(class.new(fd, event, thread), class.metatable)
-  end;
-})
+  service:stop()
+end))

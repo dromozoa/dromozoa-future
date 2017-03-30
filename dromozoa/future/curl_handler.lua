@@ -15,21 +15,34 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
+local curl = require "dromozoa.curl"
 local create_thread = require "dromozoa.future.create_thread"
 local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 
-function class.new(fd, event, thread)
-  return {
-    fd = fd;
-    event = event;
+function class.new(easy, thread)
+  local self = {
+    easy = easy;
     thread = create_thread(thread);
   }
+  local result, message = easy:setopt(curl.CURLOPT_HEADERFUNCTION, function (data)
+    self:dispatch("header", data)
+  end)
+  if not result then
+    return nil, message
+  end
+  local result, message = easy:setopt(curl.CURLOPT_WRITEFUNCTION, function (data)
+    self:dispatch("write", data)
+  end)
+  if not result then
+    return nil, message
+  end
+  return self
 end
 
-function class:dispatch(event)
-  resume_thread(self.thread, self, event)
+function class:dispatch(event, data)
+  resume_thread(self.thread, self, event, data)
 end
 
 class.metatable = {
@@ -37,7 +50,11 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __call = function (_, fd, event, thread)
-    return setmetatable(class.new(fd, event, thread), class.metatable)
+  __call = function (_, easy, thread)
+    local self, message = class.new(easy, thread)
+    if self == nil then
+      return nil, message
+    end
+    return setmetatable(self, class.metatable)
   end;
 })

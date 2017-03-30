@@ -1,8 +1,8 @@
 package = "dromozoa-future"
-version = "1.0-1"
+version = "1.1-1"
 source = {
-  url = "https://github.com/dromozoa/dromozoa-future/archive/v1.0.tar.gz";
-  file = "dromozoa-future-1.0.tar.gz";
+  url = "https://github.com/dromozoa/dromozoa-future/archive/v1.1.tar.gz";
+  file = "dromozoa-future-1.1.tar.gz";
 }
 description = {
   summary = "Toolkit for non-blocking I/O programming";
@@ -12,7 +12,7 @@ description = {
 }
 dependencies = {
   "dromozoa-commons";
---  "dromozoa-curl";
+  "dromozoa-curl";
   "dromozoa-dyld";
   "dromozoa-unix";
   "dromozoa-zmq";
@@ -23,6 +23,12 @@ build = {
     ["dromozoa.future.async_futures"] = "dromozoa/future/async_futures.lua";
     ["dromozoa.future.async_state"] = "dromozoa/future/async_state.lua";
     ["dromozoa.future.create_thread"] = "dromozoa/future/create_thread.lua";
+    ["dromozoa.future.curl_futures"] = "dromozoa/future/curl_futures.lua";
+    ["dromozoa.future.curl_handler"] = "dromozoa/future/curl_handler.lua";
+    ["dromozoa.future.curl_handler_state"] = "dromozoa/future/curl_handler_state.lua";
+    ["dromozoa.future.curl_reader"] = "dromozoa/future/curl_reader.lua";
+    ["dromozoa.future.curl_reader_state"] = "dromozoa/future/curl_reader_state.lua";
+    ["dromozoa.future.curl_service"] = "dromozoa/future/curl_service.lua";
     ["dromozoa.future.deferred_state"] = "dromozoa/future/deferred_state.lua";
     ["dromozoa.future.future"] = "dromozoa/future/future.lua";
     ["dromozoa.future.future_service"] = "dromozoa/future/future_service.lua";

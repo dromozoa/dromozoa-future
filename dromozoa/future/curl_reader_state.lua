@@ -15,21 +15,40 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
-local create_thread = require "dromozoa.future.create_thread"
-local resume_thread = require "dromozoa.future.resume_thread"
+local pack = require "dromozoa.commons.pack"
+local unpack = require "dromozoa.commons.unpack"
+local state = require "dromozoa.future.state"
 
+local super = state
 local class = {}
 
-function class.new(fd, event, thread)
-  return {
-    fd = fd;
-    event = event;
-    thread = create_thread(thread);
-  }
+function class.new(service, reader)
+  local self = super.new(service)
+  self.reader = reader
+  self.thread = coroutine.create(function (event)
+    if self:is_running() then
+      self:set(event)
+    else
+      self.result = pack(event)
+    end
+  end)
+  return self
 end
 
-function class:dispatch(event)
-  resume_thread(self.thread, self, event)
+function class:launch()
+  super.launch(self)
+  local thread = self.thread
+  self.thread = nil
+  self.reader.thread = thread
+end
+
+function class:resume()
+  super.resume(self)
+  local result = self.result
+  self.result = nil
+  if result then
+    self:set(unpack(result, 1, result.n))
+  end
 end
 
 class.metatable = {
@@ -37,7 +56,8 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __call = function (_, fd, event, thread)
-    return setmetatable(class.new(fd, event, thread), class.metatable)
+  __index = super;
+  __call = function (_, service, reader)
+    return setmetatable(class.new(service, reader), class.metatable)
   end;
 })

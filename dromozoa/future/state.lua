@@ -51,6 +51,13 @@ local function resume_caller(self, status)
   end
 end
 
+local function set_ready(self)
+  self:finish()
+  destruct_timer(self)
+  pop_state(self)
+  resume_caller(self, "ready")
+end
+
 local class = {}
 
 function class.new(service)
@@ -77,56 +84,49 @@ function class:is_ready()
 end
 
 function class:launch()
-  assert(self.waiting_state == nil)
   assert(self:is_initial())
+  assert(self.waiting_state == nil)
   self.status = "running"
 end
 
 function class:suspend()
+  assert(self:is_running())
+  self.status = "suspended"
+  remove_timer(self)
   local waiting_state = self.waiting_state
   if waiting_state ~= nil then
     waiting_state:suspend()
   end
-  assert(self:is_running())
-  self.status = "suspended"
-  remove_timer(self)
 end
 
 function class:resume()
-  local waiting_state = self.waiting_state
-  if waiting_state ~= nil then
-    waiting_state:resume()
-  end
   assert(self:is_suspended())
   self.status = "running"
   local timeout = self.timeout
   if timeout ~= nil then
     self.timer_handle = self.service:add_timer(timeout, self.timer)
   end
+  local waiting_state = self.waiting_state
+  if waiting_state ~= nil then
+    waiting_state:resume()
+  end
 end
 
 function class:finish()
-  assert(self.waiting_state == nil)
   assert(self:is_running())
+  assert(self.waiting_state == nil)
   self.status = "ready"
   remove_timer(self)
 end
 
-function class:set_ready()
-  self:finish()
-  destruct_timer(self)
-  pop_state(self)
-  resume_caller(self, "ready")
-end
-
 function class:set(...)
   self.value = pack(...)
-  self:set_ready()
+  set_ready(self)
 end
 
 function class:error(message)
   self.value = pack(nil, debug.traceback(message))
-  self:set_ready()
+  set_ready(self)
   error(never_return, 0)
 end
 
@@ -139,7 +139,7 @@ function class:assert(...)
       message = "assertion failed!"
     end
     self.value = pack(nil, debug.traceback(message))
-    self:set_ready()
+    set_ready(self)
     error(never_return, 0)
   end
 end

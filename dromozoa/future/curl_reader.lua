@@ -15,87 +15,84 @@
 -- You should have received a copy of the GNU General Public License
 -- along with dromozoa-future.  If not, see <http://www.gnu.org/licenses/>.
 
+local curl_reader_state = require "dromozoa.future.curl_reader_state"
+local future = require "dromozoa.future.future"
 local reader_buffer = require "dromozoa.future.reader_buffer"
+local resume_thread = require "dromozoa.future.resume_thread"
 
 local class = {}
 
-function class.new(service, source)
+function class.new(service, state)
   return {
     service = service;
-    source = source;
+    state = state;
     buffer = reader_buffer();
-    buffer_size = 4096;
   }
+end
+
+function class:write(data)
+  self.buffer:write(data)
+  local thread = self.thread
+  self.thread = nil
+  if thread ~= nil then
+    resume_thread(thread, "write")
+  end
+end
+
+function class:close()
+  self.buffer:close()
+  local thread = self.thread
+  self.thread = nil
+  if thread ~= nil then
+    resume_thread(thread, "close")
+  end
 end
 
 function class:read(count)
   return self.service:deferred(function (promise)
-    local source = self.source
+    self.state:start()
     local buffer = self.buffer
-    local buffer_size = self.buffer_size
     while true do
       local result = buffer:read(count)
       if result then
         return promise:set(result)
       end
-      local result, message, code = source:read(buffer_size):get()
-      if not result then
-        return promise:set(nil, message, code)
-      elseif result == "" then
-        buffer:close()
-      else
-        buffer:write(result)
-      end
+      future(curl_reader_state(self.service, self)):get()
     end
   end)
 end
 
 function class:read_some(count)
   return self.service:deferred(function (promise)
+    self.state:start()
     return promise:set(self.buffer:read_some(count))
   end)
 end
 
 function class:read_any(count)
   return self.service:deferred(function (promise)
-    local source = self.source
+    self.state:start()
     local buffer = self.buffer
-    local buffer_size = self.buffer_size
     while true do
       local result = buffer:read_some(count)
       if result ~= "" or buffer.closed then
         return promise:set(result)
       end
-      local result, message, code = source:read(buffer_size):get()
-      if not result then
-        return promise:set(nil, message, code)
-      elseif result == "" then
-        buffer:close()
-      else
-        buffer:write(result)
-      end
+      future(curl_reader_state(self.service, self)):get()
     end
   end)
 end
 
 function class:read_until(pattern)
   return self.service:deferred(function (promise)
-    local source = self.source
+    self.state:start()
     local buffer = self.buffer
-    local buffer_size = self.buffer_size
     while true do
       local result, capture = buffer:read_until(pattern)
       if result then
         return promise:set(result, capture)
       end
-      local result, message, code = source:read(buffer_size):get()
-      if not result then
-        return promise:set(nil, message, code)
-      elseif result == "" then
-        buffer:close()
-      else
-        buffer:write(result)
-      end
+      future(curl_reader_state(self.service, self)):get()
     end
   end)
 end
@@ -105,7 +102,7 @@ class.metatable = {
 }
 
 return setmetatable(class, {
-  __call = function (_, service, source)
-    return setmetatable(class.new(service, source), class.metatable)
+  __call = function (_, service, state)
+    return setmetatable(class.new(service, state), class.metatable)
   end;
 })
