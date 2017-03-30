@@ -24,7 +24,7 @@ assert(future_service():dispatch(function (service)
   local easy = assert(curl.easy())
   assert(easy:setopt(curl.CURLOPT_URL, "http://localhost/cgi-bin/nph-dromozoa-curl-test.cgi?command=sleep&sleep_duration=0.5&sleep_count=10"))
 
-  local f, reader, header = service:curl_perform(easy)
+  local f, reader, header = service:curl(easy)
 
   local result, capture = assert(header:read_until("\r\n(X%-[^:]+):"):get())
   print(("[%q %q]"):format(result, capture))
